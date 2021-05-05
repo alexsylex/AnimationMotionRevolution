@@ -87,108 +87,108 @@ namespace DMR
 		{
 			SKSE::AllocTrampoline(256);
 
-			//struct MyHook_Code : Xbyak::CodeGenerator
-			//{
-			//	MyHook_Code()
-			//	{
-			//		Xbyak::Label retnLabel;
+			struct MyHook_Code : Xbyak::CodeGenerator
+			{
+				MyHook_Code()
+				{
+					Xbyak::Label retnLabel;
 
-			//		push(rax);
+					push(rax);
 
-			//		jnz("loadVec");
-			//		mov(rax, (uintptr_t)&zero);
-			//		lea(rdx, ptr[rax]);
-			//		jmp("func");
+					jnz("loadVec");
+					mov(rax, (uintptr_t)&zero);
+					lea(rdx, ptr[rax]);
+					jmp("func");
 
-			//		L("loadVec");
-			//		//lea(eax, ptr[rbx-1]);
-			//		//lea(rax, ptr[rax+rax*2]);
-			//		//lea(rdx, ptr[r8+rax*4]);
-			//		mov(rax, (uintptr_t)&vector[0]);
-			//		lea(rdx, ptr[rax]);
+					L("loadVec");
+					//lea(eax, ptr[rbx-1]);
+					//lea(rax, ptr[rax+rax*2]);
+					//lea(rdx, ptr[r8+rax*4]);
+					mov(rax, (uintptr_t)&vector[0]);
+					lea(rdx, ptr[rax]);
 
-			//		L("func");
-			//		mov(eax, ptr[rdx]);
-			//		subss(xmm10, xmm9);
-			//		mov(ptr[rsi], eax);
-			//		lea(rcx, ptr[rbx + rbx * 2]);
-			//		mov(eax, ptr[rdx + 0x4]);
-			//		movaps(xmm0, xmm9);
-			//		mov(ptr[rsi + 0x4], eax);
-			//		movaps(xmm1, xmm9);
-			//		mov(eax, ptr[rdx + 0x8]);
-			//		mov(ptr[rsi + 0x8], eax);
+					L("func");
+					mov(eax, ptr[rdx]);
+					subss(xmm10, xmm9);
+					mov(ptr[rsi], eax);
+					lea(rcx, ptr[rbx + rbx * 2]);
+					mov(eax, ptr[rdx + 0x4]);
+					movaps(xmm0, xmm9);
+					mov(ptr[rsi + 0x4], eax);
+					movaps(xmm1, xmm9);
+					mov(eax, ptr[rdx + 0x8]);
+					mov(ptr[rsi + 0x8], eax);
 
-			//		//test
-			//		//push(rax);
-			//		////mov(rdx, (uintptr_t)&x);	 // test
-			//		////mov(eax, ptr[rdx]); // original
-			//		//mov(rax, (uintptr_t)&x);  // replacement
-			//		//subss(xmm10, xmm9);
-			//		//mov(ptr[rsi], rax);	 // mov(ptr[rsi], eax);
-			//		//lea(rcx, ptr[rbx + rbx * 2]);
-			//		////mov(ptr[rdx + 0x4], (uintptr_t)&y);	 // test
-			//		////mov(eax, ptr[rdx+0x4]); // original
-			//		//mov(rax, (uintptr_t)&y);  // replacement
-			//		//movaps(xmm0, xmm9);
-			//		//mov(ptr[rsi + 0x4], rax);  // mov(ptr[rsi+0x4], eax);
-			//		//movaps(xmm1, xmm9);
-			//		////mov(ptr[rdx+0x8], (uintptr_t)&z); // test
-			//		////mov(eax, ptr[rdx+0x8]); // original
-			//		//mov(rax, (uintptr_t)&z);   // replacement
-			//		//mov(ptr[rsi + 0x8], rax);  // mov(ptr[rsi+0x8], eax);
-
-
-			//		movaps(xmm3, xmm10);
-			//		mulss(xmm3, dword[rsi]);
-			//		movaps(xmm2, xmm10);
-			//		mulss(xmm10, dword[rsi + 0x8]);
-			//		mulss(xmm2, dword[rsi + 0x4]);
-			//		movss(dword[rsi + 0x8], xmm10);
-			//		movss(dword[rsi], xmm3);
-			//		movss(dword[rsi + 0x4], xmm2);
-
-			//		//mulss(xmm9, dword [r8 + rcx * 4 + 8]); // z
-			//		//mulss(xmm0, dword [r8 + rcx * 4]); // x
-			//		//mulss(xmm1, dword [r8 + rcx * 4 + 4]); // y
-
-			//		//mulss(xmm9, dword [a_x]);
-			//		//mulss(xmm0, dword [a_y]);
-			//		//mulss(xmm1, dword [a_z]);
-
-			//		mov(rax, (uintptr_t)&vector[2]);
-			//		mulss(xmm9, dword[rax]);
-			//		mov(rax, (uintptr_t)&vector[0]);
-			//		mulss(xmm0, dword[rax]);
-			//		mov(rax, (uintptr_t)&vector[1]);
-			//		mulss(xmm1, dword[rax]);
-
-			//		pop(rax);
-
-			//		//mulss(xmm9, dword [(std::size_t)std::addressof(x)]);
-			//		//mulss(xmm0, dword [(std::size_t)std::addressof(y)]);
-			//		//mulss(xmm1, dword [(std::size_t)std::addressof(z)]);
-
-			//		jmp(ptr[rip + retnLabel]);
-
-			//		L(retnLabel);
-			//		//dq(MyHook.address() + 0x14);
-			//		//dq(MyHook.address() + 0x5B);
-			//		dq(ApplyMotionData.address() + 0x71);
-			//	}
+					//test
+					//push(rax);
+					////mov(rdx, (uintptr_t)&x);	 // test
+					////mov(eax, ptr[rdx]); // original
+					//mov(rax, (uintptr_t)&x);  // replacement
+					//subss(xmm10, xmm9);
+					//mov(ptr[rsi], rax);	 // mov(ptr[rsi], eax);
+					//lea(rcx, ptr[rbx + rbx * 2]);
+					////mov(ptr[rdx + 0x4], (uintptr_t)&y);	 // test
+					////mov(eax, ptr[rdx+0x4]); // original
+					//mov(rax, (uintptr_t)&y);  // replacement
+					//movaps(xmm0, xmm9);
+					//mov(ptr[rsi + 0x4], rax);  // mov(ptr[rsi+0x4], eax);
+					//movaps(xmm1, xmm9);
+					////mov(ptr[rdx+0x8], (uintptr_t)&z); // test
+					////mov(eax, ptr[rdx+0x8]); // original
+					//mov(rax, (uintptr_t)&z);   // replacement
+					//mov(ptr[rsi + 0x8], rax);  // mov(ptr[rsi+0x8], eax);
 
 
-			//};
+					movaps(xmm3, xmm10);
+					mulss(xmm3, dword[rsi]);
+					movaps(xmm2, xmm10);
+					mulss(xmm10, dword[rsi + 0x8]);
+					mulss(xmm2, dword[rsi + 0x4]);
+					movss(dword[rsi + 0x8], xmm10);
+					movss(dword[rsi], xmm3);
+					movss(dword[rsi + 0x4], xmm2);
+
+					//mulss(xmm9, dword [r8 + rcx * 4 + 8]); // z
+					//mulss(xmm0, dword [r8 + rcx * 4]); // x
+					//mulss(xmm1, dword [r8 + rcx * 4 + 4]); // y
+
+					//mulss(xmm9, dword [a_x]);
+					//mulss(xmm0, dword [a_y]);
+					//mulss(xmm1, dword [a_z]);
+
+					mov(rax, (uintptr_t)&vector[2]);
+					mulss(xmm9, dword[rax]);
+					mov(rax, (uintptr_t)&vector[0]);
+					mulss(xmm0, dword[rax]);
+					mov(rax, (uintptr_t)&vector[1]);
+					mulss(xmm1, dword[rax]);
+
+					pop(rax);
+
+					//mulss(xmm9, dword [(std::size_t)std::addressof(x)]);
+					//mulss(xmm0, dword [(std::size_t)std::addressof(y)]);
+					//mulss(xmm1, dword [(std::size_t)std::addressof(z)]);
+
+					jmp(ptr[rip + retnLabel]);
+
+					L(retnLabel);
+					//dq(MyHook.address() + 0x14);
+					//dq(MyHook.address() + 0x5B);
+					dq(ApplyMotionData.address() + 0x71);
+				}
+
+
+			};
 
 			//void* codeBuf = SKSE::GetTrampolineInterface()->AllocateFromLocalPool(4096);
 
 			//MyHook_Code code(codeBuf);
-			//MyHook_Code code;
-			//code.ready();
+			MyHook_Code code;
+			code.ready();
 
-			//SKSE::Trampoline& trampoline = SKSE::GetTrampoline();
+			auto& trampoline = SKSE::GetTrampoline();
 
-			//trampoline.write_branch<6>(ApplyMotionData.address(), trampoline.allocate(code));
+			trampoline.write_branch<6>(ApplyMotionData.address(), trampoline.allocate(code));
 
 			/**********************************************************************************************
 			 **********************************************************************************************/

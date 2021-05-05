@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.19)
 
-option(SKSE_SUPPORT_XBYAK "Enables trampoline support for Xbyak." ON)
+add_definitions(-DSKSE_SUPPORT_XBYAK)
 
 # ---- Cache build vars ----
 
