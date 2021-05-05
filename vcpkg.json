@@ -1,0 +1,14 @@
+{
+    "name": "dynamicmotionreplacer",
+    "version-string": "1.0.0",
+    "description": "",
+    "homepage": "https://github.com/alexsylex/DynamicMotionReplacer",
+    "license": "MIT",
+    "dependencies": [
+        "boost-atomic",
+        "boost-stl-interfaces",
+        "span-lite",
+        "spdlog",
+        "xbyak"
+    ]
+}
