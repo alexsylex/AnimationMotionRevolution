@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.19)
 
-add_definitions(-DSKSE_SUPPORT_XBYAK)
+add_compile_definitions(SKSE_SUPPORT_XBYAK)
 
 # ---- Cache build vars ----
 
 set(Boost_USE_STATIC_RUNTIME OFF CACHE BOOL "")
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "")
 set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
-set(VCPKG_TARGET_TRIPLET "x64-windows-custom" CACHE STRING "")
+set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "")
 
 # ---- Project ----
 
