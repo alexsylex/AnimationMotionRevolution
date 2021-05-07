@@ -1,6 +1,5 @@
+#include "Hooks.h"
 #include "Logger.h"
-#include "Offsets.h"
-#include "Hook.h"
 
 static constexpr SKSE::PluginInfo plugin{ SKSE::PluginInfo::kVersion, "Dynamic Motion Replacer", 1 };
 
@@ -41,7 +40,9 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_s
 
 	SKSE::Init(a_skse);
 
-	DMR::hkbClipGeneratorActivateHook::Install();
+	DMR::hkbClipGenerator::InstallHook();
+
+	DMR::BSAnimationGraphManager::InstallHook();
 
 	DMR::ApplyMotionDataHook::Install();
 

@@ -95,7 +95,7 @@ find_package(spdlog REQUIRED CONFIG)
 # ---- Add source files ----
 
 set(headers
-	include/Hook.h
+	"include/Hooks.h"
 	include/Logger.h
 	include/Offsets.h
 	include/pch.h
@@ -103,6 +103,7 @@ set(headers
 
 set(sources
 	source/main.cpp
+	source/Hooks.cpp
 	source/Logger.cpp
 	source/pch.cpp
 )
