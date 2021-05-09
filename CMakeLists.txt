@@ -95,9 +95,8 @@ find_package(spdlog REQUIRED CONFIG)
 # ---- Add source files ----
 
 set(headers
-	"include/Hooks.h"
+	include/Hooks.h
 	include/Logger.h
-	include/Offsets.h
 	include/pch.h
 )
 
@@ -159,4 +158,10 @@ target_precompile_headers(
 	${PROJECT_NAME}
 	PRIVATE
 		include/PCH.h
+)
+
+add_custom_command(TARGET DynamicMotionReplacer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:DynamicMotionReplacer>
+	"$ENV{Skyrim64Dir}/Data/SKSE/Plugins/$<TARGET_FILE_NAME:DynamicMotionReplacer>"
+	COMMENT "Copying to SSE directory"
 )
