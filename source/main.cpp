@@ -41,8 +41,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_s
 	SKSE::Init(a_skse);
 
 	DMR::hkbClipGenerator::InstallHook();
-	DMR::BSAnimationGraphManager::InstallHook();
-	DMR::BSMotionDataContainer::InstallHook();
+	DMR::Character::InstallHooks();
 
 	return true;
 }

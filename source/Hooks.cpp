@@ -1,5 +1,6 @@
 #include "Hooks.h"
 
+#include <tuple>
 #include <limits>
 #include <charconv>
 
@@ -48,23 +49,18 @@ namespace DMR
 	{
 		std::vector<MotionData> motionList;
 		float animationDuration;
+		bool finished;
 	};
 
-	std::map<RE::hkbCharacter*, AnimMotionData>	characterMotionMap;
-	std::map<DWORD, AnimMotionData>				threadIdMotionMap;
+	std::unordered_map<RE::hkbCharacter*, AnimMotionData>	characterMotionMap;
 
 	// static
 	uint32_t __fastcall hkbClipGenerator::sub_140A0F480_Hook(RE::hkbClipGenerator* a_this)
 	{
-		RE::hkbCharacter* character = GethkbContext()->character;
-
-		if(characterMotionMap.contains(character))
-		{
-			characterMotionMap.erase(character);
-		}
-
 		if(a_this->binding && a_this->binding->animation)
 		{
+			RE::hkbCharacter* character = GethkbContext()->character;
+
 			for(RE::hkaAnnotationTrack& annotationTrack : a_this->binding->animation->annotationTracks)
 			{
 				for(RE::hkaAnnotationTrack::Annotation& annotation : annotationTrack.annotations)
@@ -84,107 +80,69 @@ namespace DMR
 						{
 							characterMotionMap[character].motionList.push_back(motion);
 						}
-
-						logger::info("[hkbClipGenerator] Added 0x{:x} {} = {} {} {} {}",
-										reinterpret_cast<uint64_t>(character), a_this->animationName.c_str(),
-										motion.time, motion.offset.x, motion.offset.y, motion.offset.z);
-						logger::flush();
+					}
+					else if(characterMotionMap.contains(character))
+					{
+						characterMotionMap.erase(character);
 					}
 				}
 			}
 		}
-
 		return sub_140A0F480(a_this);
 	}
 
 	// static
-	bool __fastcall BShkbAnimationGraph::sub_140AF0360_Hook(RE::BShkbAnimationGraph* a_this, float a_fVal, uint64_t a_u64Val)
+	void __fastcall BSMotionDataContainer::sub_1404DD5A0_Hook(RE::BSMotionDataContainer* a_this, float a_motionTime, RE::NiPoint3* a_pos)
 	{
-		RE::hkbCharacter* character = &a_this->characterInstance;
-
-		if(characterMotionMap.contains(character))
+		if(a_this->segCount > static_cast<unsigned int>(a_this->IsDataAligned()))
 		{
-			DWORD threadId = GetCurrentThreadId();
-			if(!threadIdMotionMap.contains(threadId))
+			RE::hkbCharacter* character = GethkbCharacter();
+
+			if(characterMotionMap.contains(character))
 			{
-				threadIdMotionMap[threadId] = characterMotionMap[character];
+				std::vector<MotionData>& motionList = characterMotionMap[character].motionList;
 
-				logger::info("[BShkbAnimationGraph] Added threadIdMotionMap and characterMotionMap");
-			}
-		}
+				float startMotionTime = motionList.front().time;
+				float endMotionTime = motionList.back().time;
 
-		return sub_140AF0360(a_this, a_fVal, a_u64Val); 
-	}
+				float curMotionTime = (a_motionTime > endMotionTime)? endMotionTime :
+					(a_motionTime < startMotionTime)? startMotionTime : a_motionTime;
 
-	// static
-	uint32_t __fastcall BSMotionDataContainer::ApplyMotionData_Hook(RE::BSMotionDataContainer* a_this, float a_motionTime, RE::NiPoint3* a_pos)
-	{
-		DWORD threadId = GetCurrentThreadId();
-
-		if(threadIdMotionMap.contains(threadId))
-		{
-			std::vector<MotionData>& motionList = threadIdMotionMap[threadId].motionList;
-
-			float startMotionTime = motionList.front().time;
-			float endMotionTime = motionList.back().time;
-
-			float curMotionTime = (a_motionTime > endMotionTime)? endMotionTime :
-				(a_motionTime < startMotionTime)? startMotionTime : a_motionTime;
-
-			for(unsigned int segIndex = 1; segIndex <= motionList.size(); segIndex++)
-			{
-				float curSegMotionTime = motionList.at(segIndex - 1).time;
-
-				if(curMotionTime <= curSegMotionTime)
+				for(unsigned int segIndex = 1; segIndex <= motionList.size(); segIndex++)
 				{
-					int prevSegIndex = segIndex - 1;
-					float segProgress = 1.0f;
+					float curSegMotionTime = motionList.at(segIndex - 1).time;
 
-					float prevSegMotionTime = prevSegIndex? motionList.at(prevSegIndex - 1).time : 0.0f;
-
-					float curSegMotionDuration = curSegMotionTime - prevSegMotionTime;
-					if(curSegMotionDuration > std::numeric_limits<float>::epsilon())
+					if(curMotionTime <= curSegMotionTime)
 					{
-						segProgress = (curMotionTime - prevSegMotionTime) / curSegMotionDuration;
-					}
-					const RE::NiPoint3& curSegMotionOffset = motionList.at(segIndex - 1).offset;
-					const RE::NiPoint3& prevSegMotionOffset = prevSegIndex?
-						motionList.at(prevSegIndex - 1).offset :
-						RE::NiPoint3{ 0, 0, 0 };
+						int prevSegIndex = segIndex - 1;
+						float segProgress = 1.0f;
 
-					*a_pos = curSegMotionOffset * segProgress + prevSegMotionOffset * (1.0f - segProgress);
+						float prevSegMotionTime = prevSegIndex? motionList.at(prevSegIndex - 1).time : 0.0f;
 
-					if(a_motionTime > threadIdMotionMap[threadId].animationDuration)
-					{
-						logger::info("[BSMotionDataContainer] Applying custom motion data!");
-						for(const MotionData& motion : motionList)
+						float curSegMotionDuration = curSegMotionTime - prevSegMotionTime;
+						if(curSegMotionDuration > std::numeric_limits<float>::epsilon())
 						{
-							logger::info("[BSMotionDataContainer] {} {} {} {}",
-										 motion.time, motion.offset.x, motion.offset.y, motion.offset.z);
+							segProgress = (curMotionTime - prevSegMotionTime) / curSegMotionDuration;
 						}
+						const RE::NiPoint3& curSegMotionOffset = motionList.at(segIndex - 1).offset;
+						const RE::NiPoint3& prevSegMotionOffset = prevSegIndex?
+																	motionList.at(prevSegIndex - 1).offset :
+																	RE::NiPoint3{ 0.0f, 0.0f, 0.0f };
 
-						// Should be erase, this thread ID map, but not all threads reach this point...
-						// TODO: Find out why
-						//threadIdMotionMap.erase(threadId);
-						threadIdMotionMap.clear();
+						*a_pos = curSegMotionOffset * segProgress + prevSegMotionOffset * (1.0f - segProgress);
 
-						logger::info("[BSMotionDataContainer] Erasing maps");
-						logger::flush();
+						return;
 					}
-
-					return 0x3F800000;
 				}
 			}
+			else
+			{
+				ApplyMotionData(a_this, a_motionTime, a_pos);
 
-			// TODO: Find out how the return value is computed (although it seems not being used)
-			return 0x3F800000;
+				return;
+			}
 		}
-		else
-		{
-			logger::info("[BSMotionDataContainer] Applying normal motion data...");
-			logger::flush();
-
-			return ApplyMotionData(a_this, a_motionTime, a_pos);
-		}
+			
+		*a_pos = RE::NiPoint3{ 0.0f, 0.0f, 0.0f };
 	}
 }

@@ -48,50 +48,61 @@ namespace DMR
 		}
 	};
 
-	class BShkbAnimationGraph
-	{
-		friend class BSAnimationGraphManager;
-
-		static bool __fastcall sub_140AF0360_Hook(RE::BShkbAnimationGraph* a_this, float a_fVal, uint64_t a_u64Val);
-
-		using func_t = decltype(&sub_140AF0360_Hook);
-		static inline REL::Relocation<func_t> sub_140AF0360{ REL::ID(static_cast<std::uint64_t>(62649)) }; // Called from BSAnimationGraphManager::sub_140AE2E80
-	};
-
-	class BSAnimationGraphManager
-	{
-	public:
-
-		static void InstallHook()
-		{
-			constexpr REL::ID sub_140AE2E80(static_cast<std::uint64_t>(62431));
-
-			SKSE::AllocTrampoline(16);
-			SKSE::GetTrampoline().write_call<5>(sub_140AE2E80.address() + 0x9E,	// E8 3D D4 00 00		call    BShkbAnimationGraph__sub_140AF0360
-												BShkbAnimationGraph::sub_140AF0360_Hook);
-		};
-	};
-
 	class BSMotionDataContainer
 	{
+		friend class Character;
+
+		static void __fastcall sub_1404DD5A0_Hook(RE::BSMotionDataContainer* a_this, float a_motionTime, RE::NiPoint3* a_pos);
+
+		using func_t = decltype(&sub_1404DD5A0_Hook);
+		static inline REL::Relocation<func_t> sub_1404DD5A0{ REL::ID(static_cast<std::uint64_t>(31804)) }; // Called from Character::sub_1404E6360
+
+		static inline REL::Relocation<func_t> ApplyMotionData{ REL::ID(static_cast<std::uint64_t>(31812)) }; // Called from sub_1404DD5A0
+
+		static inline RE::hkbCharacter* GethkbCharacter()
+		{
+			struct GetCharacter : Xbyak::CodeGenerator
+			{
+				GetCharacter()
+				{
+					mov(rax, r13); // r13 = Character*
+					ret();
+				}
+			} getCharacter;
+
+			auto character = getCharacter.getCode<RE::Character* (*)()>()();
+
+			if(character)
+			{
+				RE::BSAnimationGraphManagerPtr animGraph;
+
+				character->GetAnimationGraphManager(animGraph);
+
+				if(animGraph)
+				{
+					return &animGraph->graphs[animGraph->activeGraph]->characterInstance;
+				}
+			}
+
+			return nullptr;
+		}
+	};
+
+	class Character
+	{
 	public:
 
-		static void InstallHook()
+		static void InstallHooks()
 		{
-			// uint32_t __fastcall sub_1404DD5A0(uint64_t a_motionDataContainer, float a_fMotionTime, NiPoint3 *a_pos)
-			constexpr REL::ID j_ApplyMotionData(static_cast<std::uint64_t>(31804));
+			constexpr REL::ID sub_1404E6360(static_cast<std::uint64_t>(31949));
 
 			SKSE::AllocTrampoline(16);
-			SKSE::GetTrampoline().write_branch<5>(j_ApplyMotionData.address() + 0x12,	// E9 69 04 00 00		jmp     BSMotionDataContainer__ApplyMotionData_1404DDA20
-												  ApplyMotionData_Hook);
+			SKSE::GetTrampoline().write_call<5>(sub_1404E6360.address() + 0x28D,	// E8 AE 6F FF FF       call    BSMotionDataContainer__j_ApplyMotionData_1404DD5A0
+												BSMotionDataContainer::sub_1404DD5A0_Hook);
+
+			SKSE::AllocTrampoline(16);
+			SKSE::GetTrampoline().write_call<5>(sub_1404E6360.address() + 0x2A1,	// E8 9A 6F FF FF       call    BSMotionDataContainer__j_ApplyMotionData_1404DD5A0
+												BSMotionDataContainer::sub_1404DD5A0_Hook);
 		}
-
-	private:
-
-		static uint32_t __fastcall ApplyMotionData_Hook(RE::BSMotionDataContainer* a_this, float a_motionTime, RE::NiPoint3* a_pos);
-
-		// uint32_t __fastcall sub_1404DDA20(BSMotionDataContainer* a_motionDataContainer, float a_fMotionTime, NiPoint3 * a_pos)
-		using func_t = decltype(&ApplyMotionData_Hook);
-		static inline REL::Relocation<func_t> ApplyMotionData{ REL::ID(static_cast<std::uint64_t>(31812)) }; // Called from j_ApplyMotionData
 	};
 }
