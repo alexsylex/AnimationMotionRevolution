@@ -1,7 +1,7 @@
 #include "Hooks.h"
 #include "Logger.h"
 
-static constexpr SKSE::PluginInfo plugin{ SKSE::PluginInfo::kVersion, "Dynamic Motion Replacer", 1 };
+static constexpr SKSE::PluginInfo plugin{ SKSE::PluginInfo::kVersion, "Animation Motion Revolution", 1 };
 
 extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Query(const SKSE::QueryInterface* a_skse, SKSE::PluginInfo* a_info)
 {
@@ -40,8 +40,8 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_s
 
 	SKSE::Init(a_skse);
 
-	DMR::hkbClipGenerator::InstallHooks();
-	DMR::Character::InstallHooks();
+	AMR::hkbClipGenerator::InstallHooks();
+	AMR::Character::InstallHooks();
 
 	return true;
 }

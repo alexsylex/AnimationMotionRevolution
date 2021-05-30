@@ -12,7 +12,7 @@ set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "")
 # ---- Project ----
 
 project(
-	DynamicMotionReplacer
+	AnimationMotionRevolution
 	VERSION 1.0.0
 	LANGUAGES CXX
 )
@@ -39,7 +39,7 @@ set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DEBUG OFF)
 
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_LIBS ON)
-set(Boost_USE_DEBUG_RUNTIME ON)
+set(Boost_USE_DEBUG_RUNTIME OFF)
 
 if (MSVC)
 	add_compile_definitions(
@@ -49,9 +49,7 @@ if (MSVC)
 	add_compile_options(
 		/MP	# Build with Multiple Processes
 		/sdl	# Enable Additional Security Checks
-		/utf-8	# Set Source and Executable character sets to UTF-8
-		/Zi	# Debug Information Format
-
+		/utf-8	# Set Source and Executable character sets to UTF-8		
 		/permissive-	# Standards conformance
 
 		/Zc:alignedNew	# C++17 over-aligned allocation
@@ -69,7 +67,7 @@ if (MSVC)
 		/Zc:referenceBinding	# Enforce reference binding rules
 		/Zc:rvalueCast	# Enforce type conversion rules
 		/Zc:sizedDealloc	# Enable Global Sized Deallocation Functions
-		/Zc:strictStrings	# Disable string literal type conversion
+		#/Zc:strictStrings	# Disable string literal type conversion
 		/Zc:ternary	# Enforce conditional operator rules
 		/Zc:threadSafeInit	# Thread-safe Local Static Initialization
 		/Zc:tlsGuards
@@ -83,8 +81,8 @@ if (MSVC)
 		/W4	# Warning level (all warnings)
 		/WX	# Warning level (warnings are errors)
 
-		"$<$<CONFIG:DEBUG>:>"
-		"$<$<CONFIG:RELEASE>:/Zc:inline;/JMC->"
+		"$<$<CONFIG:DEBUG>:/Zi>"
+		"$<$<CONFIG:RELEASE>:/Oi;/Gy;/Zc:inline>"
 	)
 endif()
 
@@ -95,6 +93,7 @@ find_package(spdlog REQUIRED CONFIG)
 # ---- Add source files ----
 
 set(headers
+	include/MotionDataContainer.h
 	include/Hooks.h
 	include/Logger.h
 	include/pch.h
@@ -150,7 +149,7 @@ if (MSVC)
 		${PROJECT_NAME}
 		PRIVATE
 			"$<$<CONFIG:DEBUG>:/INCREMENTAL;/OPT:NOREF;/OPT:NOICF>"
-			"$<$<CONFIG:RELEASE>:/INCREMENTAL:NO;/OPT:REF;/OPT:ICF;/DEBUG:FULL>"
+			"$<$<CONFIG:RELEASE>:/INCREMENTAL:NO;/OPT:REF;/OPT:ICF>"
 	)
 endif()
 
@@ -160,8 +159,8 @@ target_precompile_headers(
 		include/PCH.h
 )
 
-add_custom_command(TARGET DynamicMotionReplacer POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:DynamicMotionReplacer>
-	"$ENV{Skyrim64Dir}/Data/SKSE/Plugins/$<TARGET_FILE_NAME:DynamicMotionReplacer>"
+add_custom_command(TARGET AnimationMotionRevolution POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:AnimationMotionRevolution>
+	"$ENV{Skyrim64Dir}/Data/SKSE/Plugins/$<TARGET_FILE_NAME:AnimationMotionRevolution>"
 	COMMENT "Copying to SSE directory"
 )
