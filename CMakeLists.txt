@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.20)
 
 add_compile_definitions(SKSE_SUPPORT_XBYAK)
 
@@ -49,7 +49,8 @@ if (MSVC)
 	add_compile_options(
 		/MP	# Build with Multiple Processes
 		/sdl	# Enable Additional Security Checks
-		/utf-8	# Set Source and Executable character sets to UTF-8		
+		/utf-8	# Set Source and Executable character sets to UTF-8
+
 		/permissive-	# Standards conformance
 
 		/Zc:alignedNew	# C++17 over-aligned allocation
@@ -82,7 +83,7 @@ if (MSVC)
 		/WX	# Warning level (warnings are errors)
 
 		"$<$<CONFIG:DEBUG>:/Zi>"
-		"$<$<CONFIG:RELEASE>:/Oi;/Gy;/Zc:inline>"
+		"$<$<CONFIG:RELEASE>:/Ob1;/Oi;/Gy;/Zc:inline;/JMC->"
 	)
 endif()
 

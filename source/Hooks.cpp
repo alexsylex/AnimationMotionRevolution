@@ -24,17 +24,17 @@ namespace AMR
 				std::string_view start = text.substr(animmotion_prefix.size());
 				std::string_view end = start.substr(start.find(' ') + 1);
 
-				std::from_chars(start.data(), end.data(), pos.x);
+				std::from_chars(start.data(), end.data(), translation.x);
 
 				start = end;
 				end = start.substr(start.find(' ') + 1);
 
-				std::from_chars(start.data(), end.data(), pos.y);
+				std::from_chars(start.data(), end.data(), translation.y);
 
 				start = end;
 				end = start.substr(start.size());
 
-				std::from_chars(start.data(), end.data(), pos.z);
+				std::from_chars(start.data(), end.data(), translation.z);
 
 				return true;
 			}
@@ -43,7 +43,7 @@ namespace AMR
 		}
 
 		float time;
-		RE::NiPoint3 pos;
+		RE::NiPoint3 translation;
 	};
 
 	struct RotationData
@@ -57,16 +57,14 @@ namespace AMR
 				time = a_annotation.time;
 
 				std::string_view start = text.substr(animrotation_prefix.size());
-				std::string_view end = start.substr(start.find(' ') + 1);
-				start = end;
-				end = start.substr(start.size());
+				std::string_view end = start.substr(start.size());
 
 				float yawDegrees;
 				std::from_chars(start.data(), end.data(), yawDegrees);
 
 				float roll = 0.0f;
 				float pitch = 0.0f;
-				float yaw = -yawDegrees * std::numbers::pi_v<float> / 180.0f;
+				float yaw = yawDegrees * std::numbers::pi_v<float> / 180.0f;
 
 				rotation.w = std::cos(roll / 2) * std::cos(pitch / 2) * std::cos(yaw / 2) + std::sin(roll / 2) * std::sin(pitch / 2) * std::sin(yaw / 2);
 				rotation.x = std::sin(roll / 2) * std::cos(pitch / 2) * std::cos(yaw / 2) - std::cos(roll / 2) * std::sin(pitch / 2) * std::sin(yaw / 2);
@@ -94,7 +92,7 @@ namespace AMR
 	std::unordered_map<RE::hkbCharacter*, AnimMotionData> characterMotionMap;
 
 	// static
-	std::uint32_t hkbClipGenerator::sub_140A0F480_Hook(RE::hkbClipGenerator* a_this)
+	std::uint32_t hkbClipGenerator::unk_A0F480_Hook(RE::hkbClipGenerator* a_this)
 	{
 		static auto GethkbContext = []() -> RE::hkbContext*
 		{
@@ -122,16 +120,19 @@ namespace AMR
 				}
 				else
 				{
-					bool isAnimMotionFound = false;
+					TranslationData translation;
+					bool isTranslationFound = false;
+
+					RotationData rotation;
+					bool isRotationFound = false;
+
 					for(RE::hkaAnnotationTrack& annotationTrack : a_this->binding->animation->annotationTracks)
 					{
 						for(RE::hkaAnnotationTrack::Annotation& annotation : annotationTrack.annotations)
 						{
-							TranslationData translation;
-							RotationData rotation;
 							if(translation.ParseFromAnnotation(annotation))
 							{
-								isAnimMotionFound = true;
+								isTranslationFound = true;
 
 								if(!characterMotionMap.contains(character) ||
 								   (characterMotionMap[character].animation != a_this->binding->animation.get()))
@@ -155,7 +156,7 @@ namespace AMR
 							}
 							else if(rotation.ParseFromAnnotation(annotation))
 							{
-								isAnimMotionFound = true;
+								isRotationFound = true;
 
 								if(!characterMotionMap.contains(character) ||
 								   (characterMotionMap[character].animation != a_this->binding->animation.get()))
@@ -179,25 +180,35 @@ namespace AMR
 							}
 						}
 
-						if(isAnimMotionFound)
+						if(isTranslationFound)
 						{
 							std::sort(characterMotionMap[character].translationList.begin(), characterMotionMap[character].translationList.end(),
 									  [](const TranslationData& a_lhs, const TranslationData& a_rhs) -> bool
 									  {
 										  return a_lhs.time < a_rhs.time;
 									  });
-							break;
 						}
+
+						if(isRotationFound)
+						{
+							std::sort(characterMotionMap[character].rotationList.begin(), characterMotionMap[character].rotationList.end(),
+									  [](const RotationData& a_lhs, const RotationData& a_rhs) -> bool
+									  {
+										  return a_lhs.time < a_rhs.time;
+									  });
+						}
+
+						if(isTranslationFound || isRotationFound) break;
 					}
 				}
 			}
 		}
 
-		return sub_140A0F480(a_this);
+		return unk_A0F480(a_this);
 	}
 
 	// static
-	void hkbClipGenerator::sub_140A0F610_Hook(RE::hkbClipGenerator* a_this)
+	void hkbClipGenerator::unk_A0F610_Hook(RE::hkbClipGenerator* a_this)
 	{
 		static auto GethkbContext = []() -> RE::hkbContext*
 		{
@@ -230,7 +241,7 @@ namespace AMR
 	}
 
 	// static
-	void MotionDataContainer::sub_1404DD5A0_Hook(RE::MotionDataContainer* a_this, float a_motionTime, RE::NiPoint3& a_translation)
+	void MotionDataContainer::unk_4DD5A0_Hook(RE::MotionDataContainer* a_this, float a_motionTime, RE::NiPoint3& a_translation)
 	{
 		static auto GethkbCharacter = []() -> RE::hkbCharacter*
 		{
@@ -264,46 +275,43 @@ namespace AMR
 
 		if(characterMotionMap.contains(character))
 		{
-			logger::info("AMR");
-			logger::flush();
-
 			std::vector<TranslationData>& motionList = characterMotionMap[character].translationList;
 
-			float endMotionTime = motionList.back().time;
-
-			float curMotionTime = (a_motionTime > endMotionTime)? endMotionTime : a_motionTime;
-
-			for(unsigned int segIndex = 1; segIndex <= motionList.size(); segIndex++)
+			if(!motionList.empty())
 			{
-				float curSegMotionTime = motionList.at(segIndex - 1).time;
+				float endMotionTime = motionList.back().time;
 
-				if(curMotionTime <= curSegMotionTime)
+				float curMotionTime = (a_motionTime > endMotionTime)? endMotionTime : a_motionTime;
+
+				for(unsigned int segIndex = 1; segIndex <= motionList.size(); segIndex++)
 				{
-					int prevSegIndex = segIndex - 1;
-					float segProgress = 1.0f;
+					float curSegMotionTime = motionList.at(segIndex - 1).time;
 
-					float prevSegMotionTime = prevSegIndex? motionList.at(prevSegIndex - 1).time : 0.0f;
-
-					float curSegMotionDuration = curSegMotionTime - prevSegMotionTime;
-					if(curSegMotionDuration > std::numeric_limits<float>::epsilon())
+					if(curMotionTime <= curSegMotionTime)
 					{
-						segProgress = (curMotionTime - prevSegMotionTime) / curSegMotionDuration;
+						int prevSegIndex = segIndex - 1;
+						float segProgress = 1.0f;
+
+						float prevSegMotionTime = prevSegIndex? motionList.at(prevSegIndex - 1).time : 0.0f;
+
+						float curSegMotionDuration = curSegMotionTime - prevSegMotionTime;
+						if(curSegMotionDuration > std::numeric_limits<float>::epsilon())
+						{
+							segProgress = (curMotionTime - prevSegMotionTime) / curSegMotionDuration;
+						}
+						const RE::NiPoint3& curSegTranslation = motionList.at(segIndex - 1).translation;
+						const RE::NiPoint3& prevSegTranslation = prevSegIndex?
+							motionList.at(prevSegIndex - 1).translation : RE::NiPoint3{ 0.0f, 0.0f, 0.0f };
+
+						a_translation = curSegTranslation * segProgress + prevSegTranslation * (1.0f - segProgress);
+
+						return;
 					}
-					const RE::NiPoint3& curSegTranslation = motionList.at(segIndex - 1).pos;
-					const RE::NiPoint3& prevSegTranslation = prevSegIndex?
-						motionList.at(prevSegIndex - 1).pos : RE::NiPoint3{ 0.0f, 0.0f, 0.0f };
-
-					a_translation = curSegTranslation * segProgress + prevSegTranslation * (1.0f - segProgress);
-
-					return;
 				}
 			}
 		}
 		else if(a_this->translationSegCount > static_cast<unsigned int>(a_this->IsTranslationDataAligned()))
 		{
-			logger::info("vanilla");
-			logger::flush();
-
 			ProcessTranslationData(&a_this->translationDataPtr, a_motionTime, a_translation);
 
 			return;
@@ -313,7 +321,7 @@ namespace AMR
 	}
 
 	// static
-	void MotionDataContainer::sub_1404DD5F0_Hook(RE::MotionDataContainer* a_this, float a_motionTime, RE::NiQuaternion& a_rotation)
+	void MotionDataContainer::unk_4DD5F0_Hook(RE::MotionDataContainer* a_this, float a_motionTime, RE::NiQuaternion& a_rotation)
 	{
 		static auto GethkbCharacter = []() -> RE::hkbCharacter*
 		{
@@ -325,58 +333,60 @@ namespace AMR
 					ret();
 				}
 			} getCharacter;
-		
+
 			auto character = getCharacter.getCode<RE::Character* (*)()>()();
-		
+
 			if(character)
 			{
 				RE::BSAnimationGraphManagerPtr animGraph;
-		
+
 				character->GetAnimationGraphManager(animGraph);
-		
+
 				if(animGraph)
 				{
 					return &animGraph->graphs[animGraph->activeGraph]->characterInstance;
 				}
 			}
-		
+
 			return nullptr;
 		};
-		
+
 		RE::hkbCharacter* character = GethkbCharacter();
-		
+
 		if(characterMotionMap.contains(character))
 		{
 			std::vector<RotationData>& motionList = characterMotionMap[character].rotationList;
-		
-			float endMotionTime = motionList.back().time;
-		
-			float curMotionTime = (a_motionTime > endMotionTime)? endMotionTime : a_motionTime;
-		
-			for(unsigned int segIndex = 1; segIndex <= motionList.size(); segIndex++)
+
+			if(!motionList.empty())
 			{
-				float curSegMotionTime = motionList.at(segIndex - 1).time;
-		
-				if(curMotionTime <= curSegMotionTime)
+				float endMotionTime = motionList.back().time;
+
+				float curMotionTime = (a_motionTime > endMotionTime)? endMotionTime : a_motionTime;
+
+				for(unsigned int segIndex = 1; segIndex <= motionList.size(); segIndex++)
 				{
-					int prevSegIndex = segIndex - 1;
-					float segProgress = 1.0f;
-		
-					float prevSegMotionTime = prevSegIndex? motionList.at(prevSegIndex - 1).time : 0.0f;
-		
-					float curSegMotionDuration = curSegMotionTime - prevSegMotionTime;
-					if(curSegMotionDuration > std::numeric_limits<float>::epsilon())
+					float curSegMotionTime = motionList.at(segIndex - 1).time;
+
+					if(curMotionTime <= curSegMotionTime)
 					{
-						segProgress = (curMotionTime - prevSegMotionTime) / curSegMotionDuration;
+						int prevSegIndex = segIndex - 1;
+						float segProgress = 1.0f;
+
+						float prevSegMotionTime = prevSegIndex? motionList.at(prevSegIndex - 1).time : 0.0f;
+
+						float curSegMotionDuration = curSegMotionTime - prevSegMotionTime;
+						if(curSegMotionDuration > std::numeric_limits<float>::epsilon())
+						{
+							segProgress = (curMotionTime - prevSegMotionTime) / curSegMotionDuration;
+						}
+						const RE::NiQuaternion& curSegRotation = motionList.at(segIndex - 1).rotation;
+						const RE::NiQuaternion& prevSegRotation = prevSegIndex?
+							motionList.at(prevSegIndex - 1).rotation : RE::NiQuaternion{ 1.0f, 0.0f, 0.0f, 0.0f };
+
+						InterpolateRotation(a_rotation, segProgress, prevSegRotation, curSegRotation);
+
+						return;
 					}
-					const RE::NiQuaternion& curSegRotation = motionList.at(segIndex - 1).rotation;
-					const RE::NiQuaternion& prevSegRotation = prevSegIndex?
-						motionList.at(prevSegIndex - 1).rotation :
-						RE::NiQuaternion{ 1.0f, 0.0f, 0.0f, 0.0f };
-
-					InterpolateRotation(a_rotation, segProgress, prevSegRotation, curSegRotation);
-
-					return;
 				}
 			}
 		}
