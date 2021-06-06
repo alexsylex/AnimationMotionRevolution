@@ -224,17 +224,20 @@ namespace AMR
 			return gethkbContext.getCode<RE::hkbContext* (*)()>()();
 		};
 
-		if(RE::hkbContext* context = GethkbContext())
+		if(a_this->binding && a_this->binding->animation)
 		{
-			RE::hkbCharacter* character = context->character;
-
-			if(characterMotionMap.contains(character) && (characterMotionMap[character].animation == a_this->binding->animation.get()))
+			if(RE::hkbContext* context = GethkbContext())
 			{
-				characterMotionMap[character].activeCount--;
-
-				if(!characterMotionMap[character].activeCount)
+				RE::hkbCharacter* character = context->character;
+			
+				if(characterMotionMap.contains(character) && (characterMotionMap[character].animation == a_this->binding->animation.get()))
 				{
-					characterMotionMap.erase(character);
+					characterMotionMap[character].activeCount--;
+
+					if(!characterMotionMap[character].activeCount)
+					{
+						characterMotionMap.erase(character);
+					}
 				}
 			}
 		}

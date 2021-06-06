@@ -12,9 +12,9 @@
 			"ctestCommandArgs": ""
 		},
 		{
-			"name": "x64-Release",
+			"name": "x64-RelWithDebInfo",
 			"generator": "Ninja",
-			"configurationType": "Release",
+			"configurationType": "RelWithDebInfo",
 			"buildRoot": "${projectDir}\\out\\build\\${name}",
 			"installRoot": "${projectDir}\\out\\install\\${name}",
 			"cmakeCommandArgs": "",
@@ -23,9 +23,9 @@
 			"inheritEnvironments": [ "msvc_x64_x64" ]
 		},
 		{
-			"name": "x64-RelWithDebInfo",
+			"name": "x64-Release",
 			"generator": "Ninja",
-			"configurationType": "RelWithDebInfo",
+			"configurationType": "Release",
 			"buildRoot": "${projectDir}\\out\\build\\${name}",
 			"installRoot": "${projectDir}\\out\\install\\${name}",
 			"cmakeCommandArgs": "",
