@@ -94,16 +94,19 @@ find_package(spdlog REQUIRED CONFIG)
 # ---- Add source files ----
 
 set(headers
-	include/MotionDataContainer.h
+	include/half.h
 	include/Hooks.h
+	include/INISettingCollection.h
 	include/Logger.h
+	include/MotionDataContainer.h
 	include/pch.h
+	include/Setting.h
 )
 
 set(sources
 	source/main.cpp
 	source/Hooks.cpp
-	source/Logger.cpp
+	source/INISettingCollection.cpp
 	source/pch.cpp
 )
 

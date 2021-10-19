@@ -1,5 +1,7 @@
 #pragma once
 
+#include "half.h"
+
 namespace RE
 {
 	class MotionDataContainer
@@ -22,12 +24,12 @@ namespace RE
 			return GetSegTranslation(translationSegCount);
 		}
 
-		inline uint16_t& GetSegTranslationTime(int a_segIndex) const
+		inline float GetSegTranslationTime(int a_segIndex) const
 		{
 			return GetSegTranslationTimesList()[a_segIndex - 1];
 		}
 
-		inline uint16_t& GetEndTranslationTime() const
+		inline float GetEndTranslationTime() const
 		{
 			return GetSegTranslationTime(translationSegCount);
 		}
@@ -48,12 +50,12 @@ namespace RE
 			return GetSegRotation(rotationSegCount);
 		}
 
-		inline uint16_t& GetSegRotationTime(int a_segIndex) const
+		inline float GetSegRotationTime(int a_segIndex) const
 		{
 			return GetSegRotationTimesList()[a_segIndex - 1];
 		}
 
-		inline uint16_t& GetEndRotationTime() const
+		inline float GetEndRotationTime() const
 		{
 			return GetSegRotationTime(rotationSegCount);
 		}
@@ -71,9 +73,9 @@ namespace RE
 			return reinterpret_cast<NiPoint3*>(TranslationDataAligned());
 		}
 
-		inline uint16_t* GetSegTranslationTimesList() const
+		inline half* GetSegTranslationTimesList() const
 		{
-			return reinterpret_cast<uint16_t*>(&GetSegTranslationList()[translationSegCount]);
+			return reinterpret_cast<half*>(&GetSegTranslationList()[translationSegCount]);
 		}
 
 		// Rotation
@@ -87,9 +89,9 @@ namespace RE
 			return reinterpret_cast<NiQuaternion*>(RotationDataAligned());
 		}
 
-		inline uint16_t* GetSegRotationTimesList() const
+		inline half* GetSegRotationTimesList() const
 		{
-			return reinterpret_cast<uint16_t*>(&GetSegRotationList()[rotationSegCount]);
+			return reinterpret_cast<half*>(&GetSegRotationList()[rotationSegCount]);
 		}
 
 	public:
@@ -101,3 +103,5 @@ namespace RE
 		unsigned int	rotationSegCount;		// 18
 	};
 }
+
+static_assert(sizeof(std::array<char, 10>) == 10);

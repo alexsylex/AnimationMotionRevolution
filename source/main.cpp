@@ -1,20 +1,28 @@
 #include "Hooks.h"
+#include "INISettingCollection.h"
 #include "Logger.h"
 
-static constexpr SKSE::PluginInfo plugin{ SKSE::PluginInfo::kVersion, "Animation Motion Revolution", 1 };
+struct PluginInfoEx : SKSE::PluginInfo
+{
+	std::uint32_t minorVersion = 0;
+	std::uint32_t patchVersion = 0;
+	const char* iniFileName = "AnimationMotionRevolution.ini";
+};
+
+static constexpr PluginInfoEx pluginInfo{ SKSE::PluginInfo::kVersion, "Animation Motion Revolution", 1, 4 };
 
 extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Query(const SKSE::QueryInterface* a_skse, SKSE::PluginInfo* a_info)
 {
-	*a_info = plugin;
+	*a_info = pluginInfo;
 
-	if(!logger::Initialize(a_info->name))
+	if (!logger::init(pluginInfo.name))
 	{
 		return false;
 	}
 
-	logger::info("{} v{}", a_info->name, a_info->version);
+	logger::info("{} {}.{}", pluginInfo.name, pluginInfo.version, pluginInfo.minorVersion);
 
-	if(a_skse->IsEditor())
+	if (a_skse->IsEditor())
 	{
 		logger::critical("Loaded in editor, marking as incompatible");
 
@@ -23,7 +31,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Query(const SKSE::QueryInterface* a
 
 	REL::Version runtimeVersion = a_skse->RuntimeVersion();
 
-	if(runtimeVersion < SKSE::RUNTIME_1_5_39)
+	if (runtimeVersion < SKSE::RUNTIME_1_5_39)
 	{
 		logger::critical("Unsupported runtime version {}", runtimeVersion.string());
 
@@ -35,13 +43,24 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Query(const SKSE::QueryInterface* a
 
 extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_skse)
 {
-	logger::info("{} loaded", plugin.name);
-	logger::flush();
+	logger::info("{} succesfully loaded", pluginInfo.name);
 
 	SKSE::Init(a_skse);
 
+	// Hide messages about memory allocated by trampolines
+	logger::set_level(logger::level::warn, logger::level::warn);
+
 	AMR::hkbClipGenerator::InstallHooks();
 	AMR::Character::InstallHooks();
+
+	logger::set_level(logger::level::debug, logger::level::debug);
+
+	std::filesystem::path iniPath = std::filesystem::current_path().append("Data\\SKSE\\Plugins").append(pluginInfo.iniFileName);
+
+	if (AMR::INISettingCollection::GetSingleton()->ReadFromFile(iniPath.string().c_str()))
+	{
+		logger::warn("Could not load {}", iniPath.string());
+	}
 
 	return true;
 }

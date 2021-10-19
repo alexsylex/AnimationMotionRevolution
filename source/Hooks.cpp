@@ -8,93 +8,131 @@
 
 namespace AMR
 {
-	constexpr std::string_view animmotion_prefix = "animmotion ";
-	constexpr std::string_view animrotation_prefix = "animrotation ";
-
-	struct TranslationData
+	class AnimMotionData
 	{
-		bool ParseFromAnnotation(RE::hkaAnnotationTrack::Annotation& a_annotation)
+	public:
+
+		struct Translation
 		{
-			std::string_view text{ a_annotation.text.c_str() };
+			float time;
+			RE::NiPoint3 translation;
+		};
 
-			if(text.starts_with(animmotion_prefix))
-			{
-				time = a_annotation.time;
+		struct Rotation
+		{
+			float time;
+			RE::NiQuaternion rotation;
+		};
 
-				std::string_view start = text.substr(animmotion_prefix.size());
-				std::string_view end = start.substr(start.find(' ') + 1);
+		AnimMotionData() = default;
 
-				std::from_chars(start.data(), end.data(), translation.x);
+		AnimMotionData(const RE::hkaAnimation* a_animation, const Translation* a_translation) 
+		: animation{ a_animation }, translationList{ *a_translation }
+		{ }
 
-				start = end;
-				end = start.substr(start.find(' ') + 1);
+		AnimMotionData(const RE::hkaAnimation* a_animation, const Rotation* a_rotation) 
+		: animation{ a_animation }, rotationList{ *a_rotation }
+		{ }
 
-				std::from_chars(start.data(), end.data(), translation.y);
-
-				start = end;
-				end = start.substr(start.size());
-
-				std::from_chars(start.data(), end.data(), translation.z);
-
-				return true;
-			}
-
-			return false;
+		void Add(const Translation* a_translation)
+		{
+			translationList.push_back(*a_translation);
 		}
 
-		float time;
-		RE::NiPoint3 translation;
-	};
-
-	struct RotationData
-	{
-		bool ParseFromAnnotation(RE::hkaAnnotationTrack::Annotation& a_annotation)
+		void Add(const Rotation* a_rotation)
 		{
-			std::string_view text{ a_annotation.text.c_str() };
-
-			if(text.starts_with(animrotation_prefix))
-			{
-				time = a_annotation.time;
-
-				std::string_view start = text.substr(animrotation_prefix.size());
-				std::string_view end = start.substr(start.size());
-
-				float yawDegrees;
-				std::from_chars(start.data(), end.data(), yawDegrees);
-
-				float roll = 0.0f;
-				float pitch = 0.0f;
-				float yaw = yawDegrees * std::numbers::pi_v<float> / 180.0f;
-
-				rotation.w = std::cos(roll / 2) * std::cos(pitch / 2) * std::cos(yaw / 2) + std::sin(roll / 2) * std::sin(pitch / 2) * std::sin(yaw / 2);
-				rotation.x = std::sin(roll / 2) * std::cos(pitch / 2) * std::cos(yaw / 2) - std::cos(roll / 2) * std::sin(pitch / 2) * std::sin(yaw / 2);
-				rotation.y = std::cos(roll / 2) * std::sin(pitch / 2) * std::cos(yaw / 2) + std::sin(roll / 2) * std::cos(pitch / 2) * std::sin(yaw / 2);
-				rotation.z = std::cos(roll / 2) * std::cos(pitch / 2) * std::sin(yaw / 2) - std::sin(roll / 2) * std::sin(pitch / 2) * std::cos(yaw / 2);
-
-				return true;
-			}
-
-			return false;
+			rotationList.push_back(*a_rotation);
 		}
 
-		float time;
-		RE::NiQuaternion rotation;
+		void SortListsByTime()
+		{
+			if (!translationList.empty()) 
+			{
+				std::sort(translationList.begin(), translationList.end(),
+					[](const Translation& a_lhs, const Translation& a_rhs) -> bool
+					{
+						return a_lhs.time < a_rhs.time;
+					});
+			}
+
+			if (!rotationList.empty()) 
+			{
+				std::sort(rotationList.begin(), rotationList.end(),
+					[](const Rotation& a_lhs, const Rotation& a_rhs) -> bool
+					{
+						return a_lhs.time < a_rhs.time;
+					});
+			}
+		}
+
+		const RE::hkaAnimation* animation = nullptr;
+		std::vector<Translation> translationList;
+		std::vector<Rotation> rotationList;
+		std::int32_t activeCount = 1;
 	};
 
-	struct AnimMotionData
+	// Annotations that we are looking for can contain translation or rotation data
+	static std::variant<std::monostate, AnimMotionData::Translation, AnimMotionData::Rotation>
+		ParseAnnotation(const RE::hkaAnnotationTrack::Annotation& a_annotation)
 	{
-		RE::hkaAnimation* animation;
-		std::vector<TranslationData> translationList;
-		std::vector<RotationData> rotationList;
-		int activeCount;
-	};
+		constexpr std::string_view animmotionPrefix = "animmotion ";
+		constexpr std::string_view animrotationPrefix = "animrotation ";
 
-	std::unordered_map<RE::hkbCharacter*, AnimMotionData> characterMotionMap;
+		std::string_view text{ a_annotation.text.c_str() };
 
-	// static
-	std::uint32_t hkbClipGenerator::unk_A0F480_Hook(RE::hkbClipGenerator* a_this)
+		if (text.starts_with(animmotionPrefix))
+		{
+			RE::NiPoint3 translation;
+
+			std::string_view start = text.substr(animmotionPrefix.size());
+			std::string_view end = start.substr(start.find(' ') + 1);
+
+			std::from_chars(start.data(), end.data(), translation.x);
+
+			start = end;
+			end = start.substr(start.find(' ') + 1);
+
+			std::from_chars(start.data(), end.data(), translation.y);
+
+			start = end;
+			end = start.substr(start.size());
+
+			std::from_chars(start.data(), end.data(), translation.z);
+
+			return AnimMotionData::Translation{ a_annotation.time, translation };
+		} 
+		else if (text.starts_with(animrotationPrefix))
+		{
+			RE::NiQuaternion rotation;
+
+			std::string_view start = text.substr(animrotationPrefix.size());
+			std::string_view end = start.substr(start.size());
+
+			float yawDegrees;
+			std::from_chars(start.data(), end.data(), yawDegrees);
+
+			float roll = 0.0f;
+			float pitch = 0.0f;
+			float yaw = yawDegrees * std::numbers::pi_v<float> / 180.0f;
+
+			rotation.w = std::cos(roll / 2) * std::cos(pitch / 2) * std::cos(yaw / 2) + std::sin(roll / 2) * std::sin(pitch / 2) * std::sin(yaw / 2);
+			rotation.x = std::sin(roll / 2) * std::cos(pitch / 2) * std::cos(yaw / 2) - std::cos(roll / 2) * std::sin(pitch / 2) * std::sin(yaw / 2);
+			rotation.y = std::cos(roll / 2) * std::sin(pitch / 2) * std::cos(yaw / 2) + std::sin(roll / 2) * std::cos(pitch / 2) * std::sin(yaw / 2);
+			rotation.z = std::cos(roll / 2) * std::cos(pitch / 2) * std::sin(yaw / 2) - std::sin(roll / 2) * std::sin(pitch / 2) * std::cos(yaw / 2);
+
+			return AnimMotionData::Rotation{ a_annotation.time, rotation };
+		}
+
+		return { };
+	}
+
+	// Container for each character instance that is playing an animation with custom motion data
+	std::map<const RE::hkbCharacter*, AnimMotionData> g_charAnimMotionMap;
+
+	// Called when animations are activated by clip generators
+	/* static */ std::uint32_t hkbClipGenerator::unk_A0F480_Hook(RE::hkbClipGenerator* a_this)
 	{
-		static auto GethkbContext = []() -> RE::hkbContext*
+		static auto GethkbContext = []() -> const RE::hkbContext*
 		{
 			struct GethkbContext : Xbyak::CodeGenerator
 			{
@@ -105,100 +143,88 @@ namespace AMR
 				}
 			} gethkbContext;
 
-			return gethkbContext.getCode<RE::hkbContext* (*)()>()();
+			return gethkbContext.getCode<const RE::hkbContext* (*)()>()();
 		};
 
-		if(a_this->binding && a_this->binding->animation)
-		{
-			if(RE::hkbContext* context = GethkbContext())
-			{
-				RE::hkbCharacter* character = context->character;
+		const RE::hkaAnimation* boundAnimation = GetBoundAnimation(a_this);
 
-				if(characterMotionMap.contains(character) && (characterMotionMap[character].animation == a_this->binding->animation.get()))
+		if (boundAnimation)
+		{
+			const RE::hkbContext* hkbContext = GethkbContext();
+			const RE::hkbCharacter* hkbCharacter = hkbContext? hkbContext->character : nullptr;
+
+			if (hkbCharacter)
+			{
+				AnimMotionData* animMotionData = g_charAnimMotionMap.contains(hkbCharacter)?
+													&g_charAnimMotionMap[hkbCharacter] : nullptr;
+
+				// Animation activation is multithreaded, therefore I need to keep track of the number of times
+				// they are activated
+				if (animMotionData && animMotionData->animation == boundAnimation)
 				{
-					characterMotionMap[character].activeCount++;
+					animMotionData->activeCount++;
 				}
 				else
 				{
-					TranslationData translation;
-					bool isTranslationFound = false;
+					AnimMotionData::Translation* translation = nullptr;
+					AnimMotionData::Rotation* rotation = nullptr;
 
-					RotationData rotation;
-					bool isRotationFound = false;
-
-					for(RE::hkaAnnotationTrack& annotationTrack : a_this->binding->animation->annotationTracks)
+					for (const RE::hkaAnnotationTrack& annotationTrack : boundAnimation->annotationTracks)
 					{
-						for(RE::hkaAnnotationTrack::Annotation& annotation : annotationTrack.annotations)
+						for (const RE::hkaAnnotationTrack::Annotation& annotation : annotationTrack.annotations)
 						{
-							if(translation.ParseFromAnnotation(annotation))
+							auto dataParsed = ParseAnnotation(annotation);
+
+							translation = std::get_if<AnimMotionData::Translation>(&dataParsed);
+
+							if (translation)
 							{
-								isTranslationFound = true;
-
-								if(!characterMotionMap.contains(character) ||
-								   (characterMotionMap[character].animation != a_this->binding->animation.get()))
+								if (animMotionData && animMotionData->animation == boundAnimation) 
 								{
-									if((characterMotionMap[character].animation != a_this->binding->animation.get()))
+									animMotionData->Add(translation);
+								}
+								else 
+								{
+									g_charAnimMotionMap.insert_or_assign(hkbCharacter, AnimMotionData{ boundAnimation, translation });
+
+									if (!animMotionData) 
 									{
-										characterMotionMap.erase(character);
+										animMotionData = &g_charAnimMotionMap[hkbCharacter];	
 									}
-
-									AnimMotionData data;
-									data.translationList.push_back(translation);
-									data.animation = a_this->binding->animation.get();
-									data.activeCount = 1;
-
-									characterMotionMap[character] = data;
 								}
-								else
-								{
-									characterMotionMap[character].translationList.push_back(translation);
-								}
-							}
-							else if(rotation.ParseFromAnnotation(annotation))
+							} 
+							else
 							{
-								isRotationFound = true;
+								rotation = std::get_if<AnimMotionData::Rotation>(&dataParsed);
 
-								if(!characterMotionMap.contains(character) ||
-								   (characterMotionMap[character].animation != a_this->binding->animation.get()))
+								if (rotation) 
 								{
-									if((characterMotionMap[character].animation != a_this->binding->animation.get()))
+									if (animMotionData && animMotionData->animation == boundAnimation) 
 									{
-										characterMotionMap.erase(character);
+										animMotionData->Add(rotation);
 									}
+									else
+									{
+										g_charAnimMotionMap.insert_or_assign(hkbCharacter, AnimMotionData{ boundAnimation, rotation });
 
-									AnimMotionData data;
-									data.rotationList.push_back(rotation);
-									data.animation = a_this->binding->animation.get();
-									data.activeCount = 1;
-
-									characterMotionMap[character] = data;
-								}
-								else
-								{
-									characterMotionMap[character].rotationList.push_back(rotation);
+										if (!animMotionData) 
+										{
+											animMotionData = &g_charAnimMotionMap[hkbCharacter];
+										}
+									}
 								}
 							}
 						}
 
-						if(isTranslationFound)
+						if (animMotionData) 
 						{
-							std::sort(characterMotionMap[character].translationList.begin(), characterMotionMap[character].translationList.end(),
-									  [](const TranslationData& a_lhs, const TranslationData& a_rhs) -> bool
-									  {
-										  return a_lhs.time < a_rhs.time;
-									  });
-						}
+							animMotionData->SortListsByTime();
 
-						if(isRotationFound)
-						{
-							std::sort(characterMotionMap[character].rotationList.begin(), characterMotionMap[character].rotationList.end(),
-									  [](const RotationData& a_lhs, const RotationData& a_rhs) -> bool
-									  {
-										  return a_lhs.time < a_rhs.time;
-									  });
-						}
+							logger::debug("{}", hkbCharacter->name.c_str());
 
-						if(isTranslationFound || isRotationFound) break;
+							// Support only for annotations in the same track, quit the loop when found
+							break;
+						}
 					}
 				}
 			}
@@ -207,10 +233,10 @@ namespace AMR
 		return unk_A0F480(a_this);
 	}
 
-	// static
-	void hkbClipGenerator::unk_A0F610_Hook(RE::hkbClipGenerator* a_this)
+	// Called when animations are deactivated by clip generators
+	/* static */ void hkbClipGenerator::unk_A0F610_Hook(RE::hkbClipGenerator* a_this)
 	{
-		static auto GethkbContext = []() -> RE::hkbContext*
+		static auto GethkbContext = []() -> const RE::hkbContext*
 		{
 			struct GethkbContext : Xbyak::CodeGenerator
 			{
@@ -221,32 +247,56 @@ namespace AMR
 				}
 			} gethkbContext;
 
-			return gethkbContext.getCode<RE::hkbContext* (*)()>()();
+			return gethkbContext.getCode<const RE::hkbContext* (*)()>()();
 		};
 
-		if(a_this->binding && a_this->binding->animation)
-		{
-			if(RE::hkbContext* context = GethkbContext())
-			{
-				RE::hkbCharacter* character = context->character;
-			
-				if(characterMotionMap.contains(character) && (characterMotionMap[character].animation == a_this->binding->animation.get()))
-				{
-					characterMotionMap[character].activeCount--;
+		const RE::hkaAnimation* boundAnimation = GetBoundAnimation(a_this);
 
-					if(!characterMotionMap[character].activeCount)
+		if (boundAnimation)
+		{
+			const RE::hkbContext* hkbContext = GethkbContext();
+			const RE::hkbCharacter* hkbCharacter = hkbContext? hkbContext->character : nullptr;
+
+			if (hkbCharacter)
+			{			
+				AnimMotionData* animMotionData = g_charAnimMotionMap.contains(hkbCharacter)?
+													&g_charAnimMotionMap[hkbCharacter] : nullptr;
+
+				// Animation deactivation is also multithreaded, so keep track of the number of 
+				// activated times left
+				if (animMotionData && animMotionData->animation == boundAnimation)
+				{
+					animMotionData->activeCount--;
+
+					// Erase from the list when deactivated same times as activated
+					if (!animMotionData->activeCount)
 					{
-						characterMotionMap.erase(character);
+						g_charAnimMotionMap.erase(hkbCharacter);
 					}
 				}
 			}
 		}
+	
+		unk_A0F610(a_this);
 	}
 
-	// static
-	void MotionDataContainer::unk_4DD5A0_Hook(RE::MotionDataContainer* a_this, float a_motionTime, RE::NiPoint3& a_translation)
+	/* static */ RE::hkbCharacter* MotionDataContainer::GethkbCharacter(RE::Character* a_character)
 	{
-		static auto GethkbCharacter = []() -> RE::hkbCharacter*
+		RE::BSAnimationGraphManagerPtr animGraph;
+
+		a_character->GetAnimationGraphManager(animGraph);
+
+		if(animGraph && animGraph->graphs[animGraph->activeGraph]) 
+		{
+			return &animGraph->graphs[animGraph->activeGraph]->characterInstance;
+		}
+
+		return nullptr;
+	};
+
+	/* static */ void MotionDataContainer::unk_4DD5A0_Hook(RE::MotionDataContainer* a_this, float a_motionTime, RE::NiPoint3& a_translation)
+	{
+		static auto GetCharacter = []() -> RE::Character*
 		{
 			struct GetCharacter : Xbyak::CodeGenerator
 			{
@@ -259,61 +309,75 @@ namespace AMR
 
 			auto character = getCharacter.getCode<RE::Character* (*)()>()();
 
-			if(character)
-			{
-				RE::BSAnimationGraphManagerPtr animGraph;
-
-				character->GetAnimationGraphManager(animGraph);
-
-				if(animGraph)
-				{
-					return &animGraph->graphs[animGraph->activeGraph]->characterInstance;
-				}
-			}
-
-			return nullptr;
+			return character;
 		};
 
-		RE::hkbCharacter* character = GethkbCharacter();
+		RE::Character* character = GetCharacter();
+		RE::hkbCharacter* hkbCharacter = GethkbCharacter(character);
 
-		if(characterMotionMap.contains(character))
+		std::vector<AnimMotionData::Translation>* customMotionList = g_charAnimMotionMap.contains(hkbCharacter)?
+														 &g_charAnimMotionMap[hkbCharacter].translationList : nullptr;
+
+		bool hasCustomMotionList = customMotionList && !customMotionList->empty();
+
+		// The game checks this in the original code, so we do
+		bool hasVanillaMotionList = a_this->translationSegCount > static_cast<std::uint32_t>(a_this->IsTranslationDataAligned());
+
+		if (hasCustomMotionList)
 		{
-			std::vector<TranslationData>& motionList = characterMotionMap[character].translationList;
+			float endMotionTime = customMotionList->back().time;
 
-			if(!motionList.empty())
+			float curMotionTime = (a_motionTime > endMotionTime)? endMotionTime : a_motionTime;
+
+			auto segCount = static_cast<std::uint32_t>(customMotionList->size());
+
+			for (std::uint32_t segIndex = 1; segIndex <= segCount; segIndex++)
 			{
-				float endMotionTime = motionList.back().time;
+				float curSegMotionTime = customMotionList->at(segIndex - 1).time;
 
-				float curMotionTime = (a_motionTime > endMotionTime)? endMotionTime : a_motionTime;
-
-				for(unsigned int segIndex = 1; segIndex <= motionList.size(); segIndex++)
+				if (curMotionTime <= curSegMotionTime)
 				{
-					float curSegMotionTime = motionList.at(segIndex - 1).time;
+					std::uint32_t prevSegIndex = segIndex - 1;
+					float segProgress = 1.0f;
 
-					if(curMotionTime <= curSegMotionTime)
+					float prevSegMotionTime = prevSegIndex? customMotionList->at(prevSegIndex - 1).time : 0.0f;
+
+					float curSegMotionDuration = curSegMotionTime - prevSegMotionTime;
+					if (curSegMotionDuration > std::numeric_limits<float>::epsilon())
 					{
-						int prevSegIndex = segIndex - 1;
-						float segProgress = 1.0f;
-
-						float prevSegMotionTime = prevSegIndex? motionList.at(prevSegIndex - 1).time : 0.0f;
-
-						float curSegMotionDuration = curSegMotionTime - prevSegMotionTime;
-						if(curSegMotionDuration > std::numeric_limits<float>::epsilon())
-						{
-							segProgress = (curMotionTime - prevSegMotionTime) / curSegMotionDuration;
-						}
-						const RE::NiPoint3& curSegTranslation = motionList.at(segIndex - 1).translation;
-						const RE::NiPoint3& prevSegTranslation = prevSegIndex?
-							motionList.at(prevSegIndex - 1).translation : RE::NiPoint3{ 0.0f, 0.0f, 0.0f };
-
-						a_translation = curSegTranslation * segProgress + prevSegTranslation * (1.0f - segProgress);
-
-						return;
+						segProgress = (curMotionTime - prevSegMotionTime) / curSegMotionDuration;
 					}
+
+					const RE::NiPoint3& curSegTranslation = customMotionList->at(segIndex - 1).translation;
+
+					const RE::NiPoint3& prevSegTranslation = prevSegIndex? customMotionList->at(prevSegIndex - 1).translation : RE::NiPoint3{ 0.0f, 0.0f, 0.0f };
+
+					a_translation = (curSegTranslation * segProgress + prevSegTranslation * (1.0f - segProgress));
+
+					//RE::bhkCharacterController* characterController = character->GetCharController();
+					//
+					//if(a_translation.z)
+					//{
+					//	if(characterController->context.currentState == RE::hkpCharacterStateType::kOnGround)
+					//	{
+					//		characterController->wantState = RE::hkpCharacterStateType::kJumping;
+					//		
+					//	}
+					//	else if(characterController->context.currentState == RE::hkpCharacterStateType::kFlying)
+					//	{
+					//		characterController->wantState = RE::hkpCharacterStateType::kInAir;
+					//	}
+					//	characterController->fallStartHeight = 0.0f;
+					//}
+					//
+					//logger::info("State {}", static_cast<std::int32_t>(characterController->context.currentState));
+					//logger::flush();
+
+					return;
 				}
 			}
-		}
-		else if(a_this->translationSegCount > static_cast<unsigned int>(a_this->IsTranslationDataAligned()))
+		} 
+		else if (hasVanillaMotionList)
 		{
 			ProcessTranslationData(&a_this->translationDataPtr, a_motionTime, a_translation);
 
@@ -323,10 +387,9 @@ namespace AMR
 		a_translation = RE::NiPoint3{ 0.0f, 0.0f, 0.0f };
 	}
 
-	// static
-	void MotionDataContainer::unk_4DD5F0_Hook(RE::MotionDataContainer* a_this, float a_motionTime, RE::NiQuaternion& a_rotation)
+	/* static */ void MotionDataContainer::unk_4DD5F0_Hook(RE::MotionDataContainer* a_this, float a_motionTime, RE::NiQuaternion& a_rotation)
 	{
-		static auto GethkbCharacter = []() -> RE::hkbCharacter*
+		static auto GetCharacter = []() -> RE::Character*
 		{
 			struct GetCharacter : Xbyak::CodeGenerator
 			{
@@ -339,61 +402,52 @@ namespace AMR
 
 			auto character = getCharacter.getCode<RE::Character* (*)()>()();
 
-			if(character)
-			{
-				RE::BSAnimationGraphManagerPtr animGraph;
-
-				character->GetAnimationGraphManager(animGraph);
-
-				if(animGraph)
-				{
-					return &animGraph->graphs[animGraph->activeGraph]->characterInstance;
-				}
-			}
-
-			return nullptr;
+			return character;
 		};
 
-		RE::hkbCharacter* character = GethkbCharacter();
+		RE::hkbCharacter* hkbCharacter = GethkbCharacter(GetCharacter());
 
-		if(characterMotionMap.contains(character))
+		std::vector<AnimMotionData::Rotation>* customMotionList = g_charAnimMotionMap.contains(hkbCharacter)?
+															&g_charAnimMotionMap[hkbCharacter].rotationList : nullptr;
+
+		bool hasCustomMotionList = customMotionList && !customMotionList->empty();
+
+		// The game checks this in the original code, so we do
+		bool hasVanillaMotionList = a_this->rotationSegCount > static_cast<std::uint32_t>(a_this->IsRotationDataAligned());
+
+		if (hasCustomMotionList)
 		{
-			std::vector<RotationData>& motionList = characterMotionMap[character].rotationList;
+			float endMotionTime = customMotionList->back().time;
 
-			if(!motionList.empty())
+			float curMotionTime = (a_motionTime > endMotionTime)? endMotionTime : a_motionTime;
+
+			for (std::uint32_t segIndex = 1; segIndex <= customMotionList->size(); segIndex++)
 			{
-				float endMotionTime = motionList.back().time;
+				float curSegMotionTime = customMotionList->at(segIndex - 1).time;
 
-				float curMotionTime = (a_motionTime > endMotionTime)? endMotionTime : a_motionTime;
-
-				for(unsigned int segIndex = 1; segIndex <= motionList.size(); segIndex++)
+				if (curMotionTime <= curSegMotionTime)
 				{
-					float curSegMotionTime = motionList.at(segIndex - 1).time;
+					std::uint32_t prevSegIndex = segIndex - 1;
+					float segProgress = 1.0f;
 
-					if(curMotionTime <= curSegMotionTime)
+					float prevSegMotionTime = prevSegIndex? customMotionList->at(prevSegIndex - 1).time : 0.0f;
+
+					float curSegMotionDuration = curSegMotionTime - prevSegMotionTime;
+					if (curSegMotionDuration > std::numeric_limits<float>::epsilon())
 					{
-						int prevSegIndex = segIndex - 1;
-						float segProgress = 1.0f;
-
-						float prevSegMotionTime = prevSegIndex? motionList.at(prevSegIndex - 1).time : 0.0f;
-
-						float curSegMotionDuration = curSegMotionTime - prevSegMotionTime;
-						if(curSegMotionDuration > std::numeric_limits<float>::epsilon())
-						{
-							segProgress = (curMotionTime - prevSegMotionTime) / curSegMotionDuration;
-						}
-						const RE::NiQuaternion& curSegRotation = motionList.at(segIndex - 1).rotation;
-						const RE::NiQuaternion& prevSegRotation = prevSegIndex?
-							motionList.at(prevSegIndex - 1).rotation : RE::NiQuaternion{ 1.0f, 0.0f, 0.0f, 0.0f };
-
-						InterpolateRotation(a_rotation, segProgress, prevSegRotation, curSegRotation);
-
-						return;
+						segProgress = (curMotionTime - prevSegMotionTime) / curSegMotionDuration;
 					}
+					const RE::NiQuaternion& curSegRotation = customMotionList->at(segIndex - 1).rotation;
+					const RE::NiQuaternion& prevSegRotation = prevSegIndex?
+						customMotionList->at(prevSegIndex - 1).rotation : RE::NiQuaternion{ 1.0f, 0.0f, 0.0f, 0.0f };
+
+					InterpolateRotation(a_rotation, segProgress, prevSegRotation, curSegRotation);
+
+					return;
 				}
 			}
-		}
-		else if(a_this->rotationSegCount > static_cast<unsigned int>(a_this->IsRotationDataAligned()))
+		} 
+		else if (hasVanillaMotionList) 
 		{
 			ProcessRotationData(&a_this->rotationDataPtr, a_motionTime, a_rotation);
 

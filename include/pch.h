@@ -45,12 +45,4 @@ constexpr auto type_name() -> std::string_view
 	return funcsig.substr(startpos, len);
 }
 
-namespace SKSE::log
-{
-	inline void flush()
-	{
-		spdlog::default_logger()->flush();
-	}
-}
-
 namespace logger = SKSE::log;
