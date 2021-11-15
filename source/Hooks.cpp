@@ -12,17 +12,15 @@ namespace AMR
 	{
 	public:
 
-		struct Translation
+		template<typename T>
+		struct Motion
 		{
 			float time;
-			RE::NiPoint3 translation;
+			T delta;
 		};
 
-		struct Rotation
-		{
-			float time;
-			RE::NiQuaternion rotation;
-		};
+		using Translation = Motion<RE::NiPoint3>;
+		using Rotation = Motion<RE::NiQuaternion>;
 
 		AnimMotionData() = default;
 
@@ -127,7 +125,62 @@ namespace AMR
 	}
 
 	// Container for each character instance that is playing an animation with custom motion data
-	std::map<const RE::hkbCharacter*, AnimMotionData> g_charAnimMotionMap;
+	class CharacterClipAnimMotionMap
+	{
+	public:
+
+		static CharacterClipAnimMotionMap* GetSingleton()
+		{
+			static CharacterClipAnimMotionMap singleton;
+
+			return &singleton;
+		}
+
+		template <typename StringT>
+		void Add(const RE::hkbCharacter* a_hkbCharacter, const StringT& a_clipName, const AnimMotionData& a_animMotionData)
+		{
+			std::string clipName{ a_clipName.c_str() };
+
+			data[a_hkbCharacter][clipName] = a_animMotionData;
+		}
+
+		template<typename StringT>
+		AnimMotionData* Get(const RE::hkbCharacter* a_hkbCharacter, const StringT& a_clipName)
+		{
+			std::string clipName{ a_clipName.c_str() };
+
+			if (data.contains(a_hkbCharacter) && data[a_hkbCharacter].contains(clipName)) 
+			{
+				return &data[a_hkbCharacter][clipName];
+			}
+			else 
+			{
+				return nullptr;
+			}
+		}
+
+		template <typename StringT>
+		void Remove(const RE::hkbCharacter* a_hkbCharacter, const StringT& a_clipName)
+		{
+			std::string clipName{ a_clipName.c_str() };
+
+			if (data.contains(a_hkbCharacter) && data[a_hkbCharacter].contains(clipName))
+			{
+				if (data[a_hkbCharacter].size() == 1) 
+				{
+					data.erase(a_hkbCharacter);
+				} 
+				else 
+				{
+					data[a_hkbCharacter].erase(clipName);
+				}
+			}
+		}
+
+	private:
+
+		std::map<const RE::hkbCharacter*, std::map<std::string, AnimMotionData>> data;
+	};
 
 	// Called when animations are activated by clip generators
 	/* static */ std::uint32_t hkbClipGenerator::unk_A0F480_Hook(RE::hkbClipGenerator* a_this)
@@ -155,8 +208,9 @@ namespace AMR
 
 			if (hkbCharacter)
 			{
-				AnimMotionData* animMotionData = g_charAnimMotionMap.contains(hkbCharacter)?
-													&g_charAnimMotionMap[hkbCharacter] : nullptr;
+				auto characterClipAnimMotionMap = CharacterClipAnimMotionMap::GetSingleton();
+
+				AnimMotionData* animMotionData = characterClipAnimMotionMap->Get(hkbCharacter, a_this->name);
 
 				// Animation activation is multithreaded, therefore I need to keep track of the number of times
 				// they are activated
@@ -171,6 +225,8 @@ namespace AMR
 
 					for (const RE::hkaAnnotationTrack& annotationTrack : boundAnimation->annotationTracks)
 					{
+						float fakeZ = 0;
+
 						for (const RE::hkaAnnotationTrack::Annotation& annotation : annotationTrack.annotations)
 						{
 							auto dataParsed = ParseAnnotation(annotation);
@@ -181,15 +237,19 @@ namespace AMR
 							{
 								if (animMotionData && animMotionData->animation == boundAnimation) 
 								{
+									// Working only with no-clip mode for the moment
+									fakeZ += 20.0f;
+									translation->delta.z = fakeZ;
+
 									animMotionData->Add(translation);
 								}
 								else 
 								{
-									g_charAnimMotionMap.insert_or_assign(hkbCharacter, AnimMotionData{ boundAnimation, translation });
+									characterClipAnimMotionMap->Add(hkbCharacter, a_this->name, AnimMotionData{ boundAnimation, translation });
 
 									if (!animMotionData) 
 									{
-										animMotionData = &g_charAnimMotionMap[hkbCharacter];	
+										animMotionData = characterClipAnimMotionMap->Get(hkbCharacter, a_this->name);
 									}
 								}
 							} 
@@ -205,11 +265,11 @@ namespace AMR
 									}
 									else
 									{
-										g_charAnimMotionMap.insert_or_assign(hkbCharacter, AnimMotionData{ boundAnimation, rotation });
+										characterClipAnimMotionMap->Add(hkbCharacter, a_this->name, AnimMotionData{ boundAnimation, rotation });
 
 										if (!animMotionData) 
 										{
-											animMotionData = &g_charAnimMotionMap[hkbCharacter];
+											animMotionData = characterClipAnimMotionMap->Get(hkbCharacter, a_this->name);
 										}
 									}
 								}
@@ -220,7 +280,15 @@ namespace AMR
 						{
 							animMotionData->SortListsByTime();
 
-							logger::debug("{}", hkbCharacter->name.c_str());
+							float animationEndTime = animMotionData->animation->duration;
+							float customTranslationEndTime = animMotionData->translationList.back().time;
+
+							if (animationEndTime != customTranslationEndTime) 
+							{
+								logger::warn("Animation={} of hkbCharacter=0x{:08x} ends at {}, while custom motion ends at {}",
+									a_this->animationName.c_str(), reinterpret_cast<std::uint64_t>(hkbCharacter), animationEndTime,
+									customTranslationEndTime);
+							}
 
 							// Support only for annotations in the same track, quit the loop when found
 							break;
@@ -258,9 +326,10 @@ namespace AMR
 			const RE::hkbCharacter* hkbCharacter = hkbContext? hkbContext->character : nullptr;
 
 			if (hkbCharacter)
-			{			
-				AnimMotionData* animMotionData = g_charAnimMotionMap.contains(hkbCharacter)?
-													&g_charAnimMotionMap[hkbCharacter] : nullptr;
+			{
+				auto characterClipAnimMotionMap = CharacterClipAnimMotionMap::GetSingleton();
+
+				AnimMotionData* animMotionData = characterClipAnimMotionMap->Get(hkbCharacter, a_this->name);
 
 				// Animation deactivation is also multithreaded, so keep track of the number of 
 				// activated times left
@@ -271,7 +340,7 @@ namespace AMR
 					// Erase from the list when deactivated same times as activated
 					if (!animMotionData->activeCount)
 					{
-						g_charAnimMotionMap.erase(hkbCharacter);
+						characterClipAnimMotionMap->Remove(hkbCharacter, a_this->name);
 					}
 				}
 			}
@@ -307,40 +376,51 @@ namespace AMR
 				}
 			} getCharacter;
 
-			auto character = getCharacter.getCode<RE::Character* (*)()>()();
+			return getCharacter.getCode<RE::Character* (*)()>()();
+		};
 
-			return character;
+		static auto GetClipName = []() -> RE::BSFixedString*
+		{
+			struct GetClipName : Xbyak::CodeGenerator
+			{
+				GetClipName()
+				{
+					mov(rax, rbx);	// rbx = RE::BSFixedString*
+					ret();
+				}
+			} getClipName;
+
+			return getClipName.getCode<RE::BSFixedString* (*)()>()();
 		};
 
 		RE::Character* character = GetCharacter();
 		RE::hkbCharacter* hkbCharacter = GethkbCharacter(character);
 
-		std::vector<AnimMotionData::Translation>* customMotionList = g_charAnimMotionMap.contains(hkbCharacter)?
-														 &g_charAnimMotionMap[hkbCharacter].translationList : nullptr;
+		AnimMotionData* animMotionData = CharacterClipAnimMotionMap::GetSingleton()->Get(hkbCharacter, *GetClipName());
 
-		bool hasCustomMotionList = customMotionList && !customMotionList->empty();
+		std::vector<AnimMotionData::Translation>* customTranslationList = animMotionData?
+			&animMotionData->translationList : nullptr;
 
-		// The game checks this in the original code, so we do
-		bool hasVanillaMotionList = a_this->translationSegCount > static_cast<std::uint32_t>(a_this->IsTranslationDataAligned());
+		bool hasCustomMotionList = customTranslationList && !customTranslationList->empty();
 
 		if (hasCustomMotionList)
 		{
-			float endMotionTime = customMotionList->back().time;
+			float endMotionTime = customTranslationList->back().time;
 
 			float curMotionTime = (a_motionTime > endMotionTime)? endMotionTime : a_motionTime;
 
-			auto segCount = static_cast<std::uint32_t>(customMotionList->size());
+			auto segCount = static_cast<std::uint32_t>(customTranslationList->size());
 
 			for (std::uint32_t segIndex = 1; segIndex <= segCount; segIndex++)
 			{
-				float curSegMotionTime = customMotionList->at(segIndex - 1).time;
+				float curSegMotionTime = customTranslationList->at(segIndex - 1).time;
 
 				if (curMotionTime <= curSegMotionTime)
 				{
 					std::uint32_t prevSegIndex = segIndex - 1;
 					float segProgress = 1.0f;
 
-					float prevSegMotionTime = prevSegIndex? customMotionList->at(prevSegIndex - 1).time : 0.0f;
+					float prevSegMotionTime = prevSegIndex? customTranslationList->at(prevSegIndex - 1).time : 0.0f;
 
 					float curSegMotionDuration = curSegMotionTime - prevSegMotionTime;
 					if (curSegMotionDuration > std::numeric_limits<float>::epsilon())
@@ -348,40 +428,40 @@ namespace AMR
 						segProgress = (curMotionTime - prevSegMotionTime) / curSegMotionDuration;
 					}
 
-					const RE::NiPoint3& curSegTranslation = customMotionList->at(segIndex - 1).translation;
+					const RE::NiPoint3& curSegTranslation = customTranslationList->at(segIndex - 1).delta;
 
-					const RE::NiPoint3& prevSegTranslation = prevSegIndex? customMotionList->at(prevSegIndex - 1).translation : RE::NiPoint3{ 0.0f, 0.0f, 0.0f };
+					const RE::NiPoint3& prevSegTranslation = prevSegIndex? customTranslationList->at(prevSegIndex - 1).delta : RE::NiPoint3{ 0.0f, 0.0f, 0.0f };
 
 					a_translation = (curSegTranslation * segProgress + prevSegTranslation * (1.0f - segProgress));
-
+					
 					//RE::bhkCharacterController* characterController = character->GetCharController();
-					//
-					//if(a_translation.z)
+					// 
+					//if(a_translation.z > 0)
 					//{
-					//	if(characterController->context.currentState == RE::hkpCharacterStateType::kOnGround)
-					//	{
-					//		characterController->wantState = RE::hkpCharacterStateType::kJumping;
-					//		
-					//	}
-					//	else if(characterController->context.currentState == RE::hkpCharacterStateType::kFlying)
-					//	{
-					//		characterController->wantState = RE::hkpCharacterStateType::kInAir;
-					//	}
-					//	characterController->fallStartHeight = 0.0f;
+					//	character->actorState1.flyState = RE::FLY_STATE::kAction;
+					//	characterController->context.currentState = RE::hkpCharacterStateType::kInAir;
 					//}
-					//
-					//logger::info("State {}", static_cast<std::int32_t>(characterController->context.currentState));
-					//logger::flush();
+					//else 
+					//{
+					//	character->actorState1.flyState = RE::FLY_STATE::kNone;
+					//	characterController->context.currentState = RE::hkpCharacterStateType::kOnGround;
+					//}
 
 					return;
 				}
 			}
 		} 
-		else if (hasVanillaMotionList)
+		else 
 		{
-			ProcessTranslationData(&a_this->translationDataPtr, a_motionTime, a_translation);
+			// The game checks this in the original code, so we do
+			bool hasVanillaMotionList = a_this->translationSegCount > static_cast<std::uint32_t>(a_this->IsTranslationDataAligned());
 
-			return;
+			if (hasVanillaMotionList)
+			{
+				ProcessTranslationData(&a_this->translationDataPtr, a_motionTime, a_translation);
+
+				return;
+			}
 		}
 
 		a_translation = RE::NiPoint3{ 0.0f, 0.0f, 0.0f };
@@ -405,41 +485,56 @@ namespace AMR
 			return character;
 		};
 
+		static auto GetClipName = []() -> RE::BSFixedString* 
+		{
+			struct GetClipName : Xbyak::CodeGenerator
+			{
+				GetClipName()
+				{
+					mov(rax, rbx);	// rbx = RE::BSFixedString*
+					ret();
+				}
+			} getClipName;
+
+			return getClipName.getCode<RE::BSFixedString* (*)()>()();
+		};
+
 		RE::hkbCharacter* hkbCharacter = GethkbCharacter(GetCharacter());
 
-		std::vector<AnimMotionData::Rotation>* customMotionList = g_charAnimMotionMap.contains(hkbCharacter)?
-															&g_charAnimMotionMap[hkbCharacter].rotationList : nullptr;
+		AnimMotionData* animMotionData = CharacterClipAnimMotionMap::GetSingleton()->Get(hkbCharacter, *GetClipName());
 
-		bool hasCustomMotionList = customMotionList && !customMotionList->empty();
+		std::vector<AnimMotionData::Rotation>* customRotationList = animMotionData ?
+																		  &animMotionData->rotationList :
+																		  nullptr;
 
-		// The game checks this in the original code, so we do
-		bool hasVanillaMotionList = a_this->rotationSegCount > static_cast<std::uint32_t>(a_this->IsRotationDataAligned());
+		bool hasCustomMotionList = customRotationList && !customRotationList->empty();
 
 		if (hasCustomMotionList)
 		{
-			float endMotionTime = customMotionList->back().time;
+			float endMotionTime = customRotationList->back().time;
 
 			float curMotionTime = (a_motionTime > endMotionTime)? endMotionTime : a_motionTime;
 
-			for (std::uint32_t segIndex = 1; segIndex <= customMotionList->size(); segIndex++)
+			for (std::uint32_t segIndex = 1; segIndex <= customRotationList->size(); segIndex++)
 			{
-				float curSegMotionTime = customMotionList->at(segIndex - 1).time;
+				float curSegMotionTime = customRotationList->at(segIndex - 1).time;
 
 				if (curMotionTime <= curSegMotionTime)
 				{
 					std::uint32_t prevSegIndex = segIndex - 1;
 					float segProgress = 1.0f;
 
-					float prevSegMotionTime = prevSegIndex? customMotionList->at(prevSegIndex - 1).time : 0.0f;
+					float prevSegMotionTime = prevSegIndex? customRotationList->at(prevSegIndex - 1).time : 0.0f;
 
 					float curSegMotionDuration = curSegMotionTime - prevSegMotionTime;
 					if (curSegMotionDuration > std::numeric_limits<float>::epsilon())
 					{
 						segProgress = (curMotionTime - prevSegMotionTime) / curSegMotionDuration;
 					}
-					const RE::NiQuaternion& curSegRotation = customMotionList->at(segIndex - 1).rotation;
+					const RE::NiQuaternion& curSegRotation = customRotationList->at(segIndex - 1).delta;
 					const RE::NiQuaternion& prevSegRotation = prevSegIndex?
-						customMotionList->at(prevSegIndex - 1).rotation : RE::NiQuaternion{ 1.0f, 0.0f, 0.0f, 0.0f };
+																	customRotationList->at(prevSegIndex - 1).delta :
+																	RE::NiQuaternion{ 1.0f, 0.0f, 0.0f, 0.0f };
 
 					InterpolateRotation(a_rotation, segProgress, prevSegRotation, curSegRotation);
 
@@ -447,11 +542,17 @@ namespace AMR
 				}
 			}
 		} 
-		else if (hasVanillaMotionList) 
+		else
 		{
-			ProcessRotationData(&a_this->rotationDataPtr, a_motionTime, a_rotation);
+			// The game checks this in the original code, so we do
+			bool hasVanillaMotionList = a_this->rotationSegCount > static_cast<std::uint32_t>(a_this->IsRotationDataAligned());
 
-			return;
+			if (hasVanillaMotionList) 
+			{
+				ProcessRotationData(&a_this->rotationDataPtr, a_motionTime, a_rotation);
+
+				return;
+			}
 		}
 
 		a_rotation = RE::NiQuaternion{ 1.0f, 0.0f, 0.0f, 0.0f };

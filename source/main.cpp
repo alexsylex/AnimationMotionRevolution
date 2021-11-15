@@ -38,6 +38,11 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Query(const SKSE::QueryInterface* a
 		return false;
 	}
 
+	if (!AMR::INISettingCollection::GetSingleton()->ReadFromFile(pluginInfo.iniFileName)) 
+	{
+		logger::warn("Could not load {}", pluginInfo.iniFileName);
+	}
+
 	return true;
 }
 
@@ -54,13 +59,6 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_s
 	AMR::Character::InstallHooks();
 
 	logger::set_level(logger::level::debug, logger::level::debug);
-
-	std::filesystem::path iniPath = std::filesystem::current_path().append("Data\\SKSE\\Plugins").append(pluginInfo.iniFileName);
-
-	if (AMR::INISettingCollection::GetSingleton()->ReadFromFile(iniPath.string().c_str()))
-	{
-		logger::warn("Could not load {}", iniPath.string());
-	}
 
 	return true;
 }

@@ -10,11 +10,18 @@ namespace AMR
 	{
 	public:
 
-		static RE::INISettingCollection* GetSingleton()
+		static AMR::INISettingCollection* GetSingleton()
 		{
 			static INISettingCollection singleton;
 
-			return singleton.This();
+			return &singleton;
+		}
+
+		bool ReadFromFile(const char* a_fileName)
+		{
+			std::filesystem::path iniPath = std::filesystem::current_path().append("Data\\SKSE\\Plugins").append(a_fileName);
+
+			return This()->ReadFromFile(iniPath.string().c_str());
 		}
 
 	private:
