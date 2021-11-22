@@ -141,7 +141,17 @@ namespace AMR
 		{
 			std::string clipName{ a_clipName.c_str() };
 
-			data[a_hkbCharacter][clipName] = a_animMotionData;
+			try 
+			{
+				data[a_hkbCharacter][clipName] = a_animMotionData;
+			}
+			catch (const std::exception& e) 
+			{
+				logger::warn("Exception thrown: {}, clearing to avoid possible memory overflow", e.what());
+				logger::flush();
+
+				data.clear();
+			}
 		}
 
 		template<typename StringT>
@@ -183,28 +193,13 @@ namespace AMR
 	};
 
 	// Called when animations are activated by clip generators
-	/* static */ std::uint32_t hkbClipGenerator::unk_A0F480_Hook(RE::hkbClipGenerator* a_this)
+	std::uint32_t hkbClipGenerator::unk_A0F480_Hook(const RE::hkbClipGenerator* a_this, const RE::hkbContext* a_hkbContext)
 	{
-		static auto GethkbContext = []() -> const RE::hkbContext*
-		{
-			struct GethkbContext : Xbyak::CodeGenerator
-			{
-				GethkbContext()
-				{
-					mov(rax, r15); // r15 = hkbContext*
-					ret();
-				}
-			} gethkbContext;
-
-			return gethkbContext.getCode<const RE::hkbContext* (*)()>()();
-		};
-
 		const RE::hkaAnimation* boundAnimation = GetBoundAnimation(a_this);
 
 		if (boundAnimation)
 		{
-			const RE::hkbContext* hkbContext = GethkbContext();
-			const RE::hkbCharacter* hkbCharacter = hkbContext? hkbContext->character : nullptr;
+			const RE::hkbCharacter* hkbCharacter = a_hkbContext? a_hkbContext->character : nullptr;
 
 			if (hkbCharacter)
 			{
@@ -302,28 +297,13 @@ namespace AMR
 	}
 
 	// Called when animations are deactivated by clip generators
-	/* static */ void hkbClipGenerator::unk_A0F610_Hook(RE::hkbClipGenerator* a_this)
+	void hkbClipGenerator::unk_A0F610_Hook(const RE::hkbClipGenerator* a_this, const RE::hkbContext* a_hkbContext)
 	{
-		static auto GethkbContext = []() -> const RE::hkbContext*
-		{
-			struct GethkbContext : Xbyak::CodeGenerator
-			{
-				GethkbContext()
-				{
-					mov(rax, r14); // r14 = hkbContext*
-					ret();
-				}
-			} gethkbContext;
-
-			return gethkbContext.getCode<const RE::hkbContext* (*)()>()();
-		};
-
 		const RE::hkaAnimation* boundAnimation = GetBoundAnimation(a_this);
 
 		if (boundAnimation)
 		{
-			const RE::hkbContext* hkbContext = GethkbContext();
-			const RE::hkbCharacter* hkbCharacter = hkbContext? hkbContext->character : nullptr;
+			const RE::hkbCharacter* hkbCharacter = a_hkbContext ? a_hkbContext->character : nullptr;
 
 			if (hkbCharacter)
 			{
@@ -363,7 +343,8 @@ namespace AMR
 		return nullptr;
 	};
 
-	/* static */ void MotionDataContainer::unk_4DD5A0_Hook(RE::MotionDataContainer* a_this, float a_motionTime, RE::NiPoint3& a_translation)
+	void MotionDataContainer::unk_4DD5A0_Hook(RE::MotionDataContainer* a_this, float a_motionTime, 
+											  RE::NiPoint3& a_translation, const RE::BSFixedString* a_clipName)
 	{
 		static auto GetCharacter = []() -> RE::Character*
 		{
@@ -379,24 +360,10 @@ namespace AMR
 			return getCharacter.getCode<RE::Character* (*)()>()();
 		};
 
-		static auto GetClipName = []() -> RE::BSFixedString*
-		{
-			struct GetClipName : Xbyak::CodeGenerator
-			{
-				GetClipName()
-				{
-					mov(rax, rbx);	// rbx = RE::BSFixedString*
-					ret();
-				}
-			} getClipName;
-
-			return getClipName.getCode<RE::BSFixedString* (*)()>()();
-		};
-
 		RE::Character* character = GetCharacter();
 		RE::hkbCharacter* hkbCharacter = GethkbCharacter(character);
 
-		AnimMotionData* animMotionData = CharacterClipAnimMotionMap::GetSingleton()->Get(hkbCharacter, *GetClipName());
+		AnimMotionData* animMotionData = CharacterClipAnimMotionMap::GetSingleton()->Get(hkbCharacter, *a_clipName);
 
 		std::vector<AnimMotionData::Translation>* customTranslationList = animMotionData?
 			&animMotionData->translationList : nullptr;
@@ -467,7 +434,8 @@ namespace AMR
 		a_translation = RE::NiPoint3{ 0.0f, 0.0f, 0.0f };
 	}
 
-	/* static */ void MotionDataContainer::unk_4DD5F0_Hook(RE::MotionDataContainer* a_this, float a_motionTime, RE::NiQuaternion& a_rotation)
+	void MotionDataContainer::unk_4DD5F0_Hook(RE::MotionDataContainer* a_this, float a_motionTime,
+		RE::NiQuaternion& a_rotation, const RE::BSFixedString* a_clipName)
 	{
 		static auto GetCharacter = []() -> RE::Character*
 		{
@@ -485,23 +453,9 @@ namespace AMR
 			return character;
 		};
 
-		static auto GetClipName = []() -> RE::BSFixedString* 
-		{
-			struct GetClipName : Xbyak::CodeGenerator
-			{
-				GetClipName()
-				{
-					mov(rax, rbx);	// rbx = RE::BSFixedString*
-					ret();
-				}
-			} getClipName;
-
-			return getClipName.getCode<RE::BSFixedString* (*)()>()();
-		};
-
 		RE::hkbCharacter* hkbCharacter = GethkbCharacter(GetCharacter());
 
-		AnimMotionData* animMotionData = CharacterClipAnimMotionMap::GetSingleton()->Get(hkbCharacter, *GetClipName());
+		AnimMotionData* animMotionData = CharacterClipAnimMotionMap::GetSingleton()->Get(hkbCharacter, *a_clipName);
 
 		std::vector<AnimMotionData::Rotation>* customRotationList = animMotionData ?
 																		  &animMotionData->rotationList :

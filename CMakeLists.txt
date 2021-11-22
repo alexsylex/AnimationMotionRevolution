@@ -83,7 +83,7 @@ if (MSVC)
 		/WX	# Warning level (warnings are errors)
 
 		"$<$<CONFIG:DEBUG>:/Zi>"
-		"$<$<CONFIG:RELEASE>:/Ob1;/Oi;/Gy;/Zc:inline;/JMC->"
+		"$<$<CONFIG:RELEASE>:/Oi;/Gy;/Zc:inline;/JMC->"
 	)
 endif()
 
