@@ -220,8 +220,6 @@ namespace AMR
 
 					for (const RE::hkaAnnotationTrack& annotationTrack : boundAnimation->annotationTracks)
 					{
-						float fakeZ = 0;
-
 						for (const RE::hkaAnnotationTrack::Annotation& annotation : annotationTrack.annotations)
 						{
 							auto dataParsed = ParseAnnotation(annotation);
@@ -232,10 +230,6 @@ namespace AMR
 							{
 								if (animMotionData && animMotionData->animation == boundAnimation) 
 								{
-									// Working only with no-clip mode for the moment
-									fakeZ += 20.0f;
-									translation->delta.z = fakeZ;
-
 									animMotionData->Add(translation);
 								}
 								else 
@@ -258,7 +252,7 @@ namespace AMR
 									{
 										animMotionData->Add(rotation);
 									}
-									else
+									else 
 									{
 										characterClipAnimMotionMap->Add(hkbCharacter, a_this->name, AnimMotionData{ boundAnimation, rotation });
 
@@ -275,14 +269,19 @@ namespace AMR
 						{
 							animMotionData->SortListsByTime();
 
-							float animationEndTime = animMotionData->animation->duration;
-							float customTranslationEndTime = animMotionData->translationList.back().time;
-
-							if (animationEndTime != customTranslationEndTime) 
+							if (!animMotionData->translationList.empty() && animMotionData->translationList.back().time != boundAnimation->duration) 
 							{
-								logger::warn("Animation={} of hkbCharacter=0x{:08x} ends at {}, while custom motion ends at {}",
-									a_this->animationName.c_str(), reinterpret_cast<std::uint64_t>(hkbCharacter), animationEndTime,
-									customTranslationEndTime);
+								logger::warn("Animation={} of hkbCharacter=0x{:08x} ends at {}, while custom translation ends at {}",
+									a_this->animationName.c_str(), reinterpret_cast<std::uint64_t>(hkbCharacter),
+									boundAnimation->duration, animMotionData->translationList.back().time);
+							}
+
+							if (!animMotionData->rotationList.empty() && animMotionData->rotationList.back().time != boundAnimation->duration) 
+							{
+								logger::warn(
+									"Animation={} of hkbCharacter=0x{:08x} ends at {}, while custom rotation ends at {}",
+									a_this->animationName.c_str(), reinterpret_cast<std::uint64_t>(hkbCharacter),
+									boundAnimation->duration, animMotionData->rotationList.back().time);
 							}
 
 							// Support only for annotations in the same track, quit the loop when found
@@ -418,7 +417,7 @@ namespace AMR
 				}
 			}
 		} 
-		else 
+		else
 		{
 			// The game checks this in the original code, so we do
 			bool hasVanillaMotionList = a_this->translationSegCount > static_cast<std::uint32_t>(a_this->IsTranslationDataAligned());
