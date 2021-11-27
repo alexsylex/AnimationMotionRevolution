@@ -4,8 +4,8 @@
 
 struct PluginInfoEx : SKSE::PluginInfo
 {
-	std::uint32_t minorVersion = 0;
-	std::uint32_t patchVersion = 0;
+	std::uint32_t minorVersion;
+	std::uint32_t patchVersion;
 	const char* iniFileName = "AnimationMotionRevolution.ini";
 };
 
@@ -38,11 +38,6 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Query(const SKSE::QueryInterface* a
 		return false;
 	}
 
-	if (!AMR::INISettingCollection::GetSingleton()->ReadFromFile(pluginInfo.iniFileName)) 
-	{
-		logger::warn("Could not load {}", pluginInfo.iniFileName);
-	}
-
 	return true;
 }
 
@@ -52,13 +47,26 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_s
 
 	SKSE::Init(a_skse);
 
-	// Hide messages about memory allocated by trampolines
-	logger::set_level(logger::level::warn, logger::level::warn);
+	AMR::INISettingCollection* iniSettingCollection = AMR::INISettingCollection::GetSingleton();
+
+	if (!iniSettingCollection->ReadFromFile(pluginInfo.iniFileName)) 
+	{
+		logger::warn("Could not load {}", pluginInfo.iniFileName);
+	} 
+
+	bool enableLog = iniSettingCollection->GetSetting("bEnableLog:Debug")->GetBool();
+	if (enableLog)
+	{
+		auto loggerLevel = static_cast<logger::level>(iniSettingCollection->GetSetting("uLogLevel:Debug")->GetUInt());
+		logger::set_level(loggerLevel, loggerLevel);
+	}
+	else 
+	{
+		logger::set_level(logger::level::err, logger::level::err);
+	}
 
 	AMR::hkbClipGenerator::InstallHooks();
 	AMR::Character::InstallHooks();
-
-	logger::set_level(logger::level::debug, logger::level::debug);
 
 	return true;
 }

@@ -264,8 +264,8 @@ namespace AMR
 								}
 							}
 						}
-
-						if (animMotionData) 
+						 
+						if (animMotionData)
 						{
 							animMotionData->SortListsByTime();
 

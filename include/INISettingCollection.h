@@ -6,6 +6,8 @@
 
 namespace AMR
 {
+	// Deriving from RE::INISettingCollection does not compile as the virtual functions are not defined (Unresolved external symbols).
+	// The best way I could find is to replicate that class layout into mine.
 	class INISettingCollection
 	{
 	public:
@@ -22,6 +24,11 @@ namespace AMR
 			std::filesystem::path iniPath = std::filesystem::current_path().append("Data\\SKSE\\Plugins").append(a_fileName);
 
 			return This()->ReadFromFile(iniPath.string().c_str());
+		}
+
+		RE::Setting* GetSetting(const char* a_name)
+		{
+			return This()->GetSetting(a_name);
 		}
 
 	private:

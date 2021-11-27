@@ -127,11 +127,11 @@ namespace AMR
 	{
 	public:
 
-		static void InstallHooks() 
+		static void InstallHooks()
 		{			
 			constexpr REL::ID unk_4E6360(static_cast<std::uint64_t>(31949));
 
-			SKSE::AllocTrampoline(256);
+			SKSE::AllocTrampoline(128);
 			auto& trampoline = SKSE::GetTrampoline();
 
 			struct HookCode : Xbyak::CodeGenerator

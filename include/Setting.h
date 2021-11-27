@@ -6,6 +6,8 @@
 
 namespace AMR
 {
+	// Deriving from RE::Setting does not compile as the virtual functions are not defined (Unresolved external symbols).
+	// The best way I could find is to replicate that class layout into mine.
 	class Setting
 	{
 		template <typename T>
@@ -15,6 +17,11 @@ namespace AMR
 
 		template <typename T>
 		Setting(const char* a_name, T a_data)
+			requires(std::same_as<T, const char*> ||
+					 std::same_as<T, bool> ||
+					 std::same_as<T, int> ||
+					 std::same_as<T, unsigned int> ||
+					 std::same_as<T, float>)
 		{
 			std::size_t nameLen = std::strlen(a_name) + sizeof('\0');
 
@@ -27,8 +34,12 @@ namespace AMR
 				{
 					if (GetType() == Type::kString) 
 					{
-						if (SetStringValue(a_data)) 
+						std::size_t dataLen = std::strlen(a_data) + sizeof('\0');
+						if (dataLen < MAX_PATH) 
 						{
+							data.s = new char[dataLen];
+							strcpy_s(data.s, dataLen, a_data);
+
 							return;
 						}
 					}
@@ -88,25 +99,12 @@ namespace AMR
 			}
 		}
 
+		// For the virtual table auto-generation.
 		virtual bool Unk_01(void) { return false; }	 // 01
 
 		Type GetType() const
 		{
 			return reinterpret_cast<const RE::Setting*>(this)->GetType();
-		}
-
-		bool SetStringValue(const char* a_str)
-		{
-			std::size_t dataLen = std::strlen(a_str) + sizeof('\0');
-			if (dataLen < MAX_PATH)
-			{
-				data.s = new char[dataLen];
-				strcpy_s(data.s, dataLen, a_str);
-
-				return true;
-			}
-
-			return false;
 		}
 
 		// members
