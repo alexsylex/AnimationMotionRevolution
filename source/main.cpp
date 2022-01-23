@@ -49,7 +49,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_s
 
 	AMR::INISettingCollection* iniSettingCollection = AMR::INISettingCollection::GetSingleton();
 
-	if (!iniSettingCollection->ReadFromFile(pluginInfo.iniFileName)) 
+	if (!iniSettingCollection->ReadFromFile(pluginInfo.iniFileName))
 	{
 		logger::warn("Could not load {}", pluginInfo.iniFileName);
 	} 
@@ -65,8 +65,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_s
 		logger::set_level(logger::level::err, logger::level::err);
 	}
 
-	AMR::hkbClipGenerator::InstallHooks();
-	AMR::Character::InstallHooks();
+	AMR::InstallHooks();
 
 	return true;
 }

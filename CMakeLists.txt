@@ -85,6 +85,14 @@ if (MSVC)
 		"$<$<CONFIG:DEBUG>:/Zi>"
 		"$<$<CONFIG:RELEASE>:/Oi;/Gy;/Zc:inline;/JMC->"
 	)
+
+	add_compile_definitions(
+		PRIVATE
+			#$<$<STREQUAL:${NAME},x64-SE-Debug>:BUILD_SE>
+			#"$<$<STREQUAL:${NAME},x64-SE-Release>:BUILD_SE>"
+			#"$<$<STREQUAL:${NAME},x64-AE-Debug>:BUILD_AE>"
+			#"$<$<STREQUAL:${NAME},x64-AE-Release>:BUILD_AE>"
+	)
 endif()
 
 add_subdirectory("extern/CommonLibSSE" CommonLibSSE)
@@ -94,6 +102,7 @@ find_package(spdlog REQUIRED CONFIG)
 # ---- Add source files ----
 
 set(headers
+	include/AutoTrampoline.h
 	include/half.h
 	include/Hooks.h
 	include/INISettingCollection.h

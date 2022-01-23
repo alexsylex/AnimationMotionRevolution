@@ -69,7 +69,7 @@ namespace AMR
 		std::int32_t activeCount = 1;
 	};
 
-	// Annotations that we are looking for can contain translation or rotation data
+	// Annotations we are looking for contain translation/rotation data
 	static std::variant<std::monostate, AnimMotionData::Translation, AnimMotionData::Rotation>
 		ParseAnnotation(const RE::hkaAnnotationTrack::Annotation& a_annotation)
 	{
@@ -193,7 +193,7 @@ namespace AMR
 	};
 
 	// Called when animations are activated by clip generators
-	std::uint32_t hkbClipGenerator::unk_A0F480_Hook(const RE::hkbClipGenerator* a_this, const RE::hkbContext* a_hkbContext)
+	std::uint32_t hkbClipGenerator::ComputeStartTime_Hook(const RE::hkbClipGenerator* a_this, const RE::hkbContext* a_hkbContext)
 	{
 		const RE::hkaAnimation* boundAnimation = GetBoundAnimation(a_this);
 
@@ -292,17 +292,17 @@ namespace AMR
 			}
 		}
 
-		return unk_A0F480(a_this);
+		return ComputeStartTime(a_this);
 	}
 
 	// Called when animations are deactivated by clip generators
-	void hkbClipGenerator::unk_A0F610_Hook(const RE::hkbClipGenerator* a_this, const RE::hkbContext* a_hkbContext)
+	void hkbClipGenerator::ResetIgnoreStartTime_Hook(const RE::hkbClipGenerator* a_this, const RE::hkbContext* a_hkbContext)
 	{
 		const RE::hkaAnimation* boundAnimation = GetBoundAnimation(a_this);
 
 		if (boundAnimation)
 		{
-			const RE::hkbCharacter* hkbCharacter = a_hkbContext ? a_hkbContext->character : nullptr;
+			const RE::hkbCharacter* hkbCharacter = a_hkbContext? a_hkbContext->character : nullptr;
 
 			if (hkbCharacter)
 			{
@@ -325,24 +325,10 @@ namespace AMR
 			}
 		}
 	
-		unk_A0F610(a_this);
+		ResetIgnoreStartTime(a_this);
 	}
-
-	/* static */ RE::hkbCharacter* MotionDataContainer::GethkbCharacter(RE::Character* a_character)
-	{
-		RE::BSAnimationGraphManagerPtr animGraph;
-
-		a_character->GetAnimationGraphManager(animGraph);
-
-		if(animGraph && animGraph->graphs[animGraph->activeGraph]) 
-		{
-			return &animGraph->graphs[animGraph->activeGraph]->characterInstance;
-		}
-
-		return nullptr;
-	};
-
-	void MotionDataContainer::unk_4DD5A0_Hook(RE::MotionDataContainer* a_this, float a_motionTime, 
+	
+	void MotionDataContainer::ProcessTranslationData_Hook(RE::MotionDataContainer* a_this, float a_motionTime, 
 											  RE::NiPoint3& a_translation, const RE::BSFixedString* a_clipName)
 	{
 		static auto GetCharacter = []() -> RE::Character*
@@ -399,19 +385,6 @@ namespace AMR
 					const RE::NiPoint3& prevSegTranslation = prevSegIndex? customTranslationList->at(prevSegIndex - 1).delta : RE::NiPoint3{ 0.0f, 0.0f, 0.0f };
 
 					a_translation = (curSegTranslation * segProgress + prevSegTranslation * (1.0f - segProgress));
-					
-					//RE::bhkCharacterController* characterController = character->GetCharController();
-					// 
-					//if(a_translation.z > 0)
-					//{
-					//	character->actorState1.flyState = RE::FLY_STATE::kAction;
-					//	characterController->context.currentState = RE::hkpCharacterStateType::kInAir;
-					//}
-					//else 
-					//{
-					//	character->actorState1.flyState = RE::FLY_STATE::kNone;
-					//	characterController->context.currentState = RE::hkpCharacterStateType::kOnGround;
-					//}
 
 					return;
 				}
@@ -433,7 +406,7 @@ namespace AMR
 		a_translation = RE::NiPoint3{ 0.0f, 0.0f, 0.0f };
 	}
 
-	void MotionDataContainer::unk_4DD5F0_Hook(RE::MotionDataContainer* a_this, float a_motionTime,
+	void MotionDataContainer::ProcessRotationData_Hook(RE::MotionDataContainer* a_this, float a_motionTime,
 		RE::NiQuaternion& a_rotation, const RE::BSFixedString* a_clipName)
 	{
 		static auto GetCharacter = []() -> RE::Character*
@@ -500,7 +473,7 @@ namespace AMR
 			// The game checks this in the original code, so we do
 			bool hasVanillaMotionList = a_this->rotationSegCount > static_cast<std::uint32_t>(a_this->IsRotationDataAligned());
 
-			if (hasVanillaMotionList) 
+			if (hasVanillaMotionList)
 			{
 				ProcessRotationData(&a_this->rotationDataPtr, a_motionTime, a_rotation);
 
