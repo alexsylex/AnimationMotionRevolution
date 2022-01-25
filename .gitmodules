@@ -1,3 +1,4 @@
-[submodule "extern/CommonLibVR-vr"]
-	path = extern/CommonLibVR-vr
+[submodule "extern/CommonLibVR"]
+	path = extern/CommonLibVR
 	url = https://github.com/alandtse/CommonLibVR
+	branch = vr
