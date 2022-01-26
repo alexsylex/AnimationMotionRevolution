@@ -1,12 +1,14 @@
 {
-    "name": "dynamicmotionreplacer",
-    "version-string": "1.0.0",
+    "name": "animationmotionrevolution",
+    "version-string": "1.4.0",
     "description": "",
-    "homepage": "https://github.com/alexsylex/DynamicMotionReplacer",
+    "homepage": "https://github.com/alexsylex/AnimationMotionRevolution/tree/VR",
     "license": "MIT",
     "dependencies": [
         "boost-atomic",
         "boost-stl-interfaces",
+        "fmt",
+        "rsm-binary-io",
         "span-lite",
         "spdlog",
         "xbyak"

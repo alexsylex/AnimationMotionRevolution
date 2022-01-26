@@ -13,7 +13,7 @@ set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "")
 
 project(
 	AnimationMotionRevolution
-	VERSION 1.0.0
+	VERSION 1.4.0
 	LANGUAGES CXX
 )
 
@@ -80,7 +80,7 @@ if (MSVC)
 		/external:W0
 
 		/W4	# Warning level (all warnings)
-		/WX	# Warning level (warnings are errors)
+		#/WX	# Warning level (warnings are errors)
 
 		"$<$<CONFIG:DEBUG>:/Zi>"
 		"$<$<CONFIG:RELEASE>:/Oi;/Gy;/Zc:inline;/JMC->"
@@ -95,8 +95,9 @@ if (MSVC)
 	)
 endif()
 
-add_subdirectory("extern/CommonLibSSE" CommonLibSSE)
+add_subdirectory("extern/CommonLibVR" CommonLibVR)
 
+find_package(binary_io REQUIRED CONFIG)
 find_package(spdlog REQUIRED CONFIG)
 
 # ---- Add source files ----
@@ -153,7 +154,7 @@ target_include_directories(
 target_link_libraries(
 	${PROJECT_NAME}
 	PRIVATE
-		CommonLibSSE::CommonLibSSE
+		CommonLibVR::CommonLibVR
 		spdlog::spdlog
 )
 
@@ -172,8 +173,8 @@ target_precompile_headers(
 		include/PCH.h
 )
 
-add_custom_command(TARGET AnimationMotionRevolution POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:AnimationMotionRevolution>
-	"$ENV{Skyrim64Dir}/Data/SKSE/Plugins/$<TARGET_FILE_NAME:AnimationMotionRevolution>"
-	COMMENT "Copying to SSE directory"
-)
+#add_custom_command(TARGET AnimationMotionRevolution POST_BUILD
+#    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:AnimationMotionRevolution>
+#	"$ENV{Skyrim64Dir}/Data/SKSE/Plugins/$<TARGET_FILE_NAME:AnimationMotionRevolution>"
+#	COMMENT "Copying to SSE directory"
+#)
