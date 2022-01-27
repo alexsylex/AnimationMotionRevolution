@@ -60,7 +60,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_s
 		auto loggerLevel = static_cast<logger::level>(iniSettingCollection->GetSetting("uLogLevel:Debug")->GetUInt());
 		logger::set_level(loggerLevel, loggerLevel);
 	}
-	else 
+	else
 	{
 		logger::set_level(logger::level::err, logger::level::err);
 	}

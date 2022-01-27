@@ -13,7 +13,7 @@ set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "")
 
 project(
 	AnimationMotionRevolution
-	VERSION 1.0.0
+	VERSION 1.4.0
 	LANGUAGES CXX
 )
 
@@ -97,6 +97,7 @@ endif()
 
 add_subdirectory("extern/CommonLibSSE" CommonLibSSE)
 
+find_package(binary_io REQUIRED CONFIG)
 find_package(spdlog REQUIRED CONFIG)
 
 # ---- Add source files ----
