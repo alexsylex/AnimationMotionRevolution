@@ -8,12 +8,12 @@ namespace AMR
 	{
 		// Use the Skyrim's INISettingCollection virtual functions
 		REL::Relocation<std::uintptr_t> vTable(*reinterpret_cast<std::uintptr_t*>(this));
-		std::uintptr_t* originalVTable = REL::Relocation<std::uintptr_t*>{ REL::ID(230108) }.get();
+		std::uintptr_t* skyrimsVTable = REL::Relocation<std::uintptr_t*>{ VTABLEID }.get();
 
 		// Replace all except the destructor (index 0)
 		for (int i = 1; i < 10; i++) 
 		{
-			vTable.write_vfunc(i, originalVTable[i]);
+			vTable.write_vfunc(i, skyrimsVTable[i]);
 		}
 
 		This()->InsertSetting(MakeSetting("bEnableLog:Debug", false));

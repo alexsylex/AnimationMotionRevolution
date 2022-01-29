@@ -87,11 +87,17 @@ if (MSVC)
 	)
 
 	add_compile_definitions(
+		PLUGIN_FILENAME="${PROJECT_NAME}"
+		PLUGIN_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
+		PLUGIN_VERSION_MINOR=${PROJECT_VERSION_MINOR}
+		PLUGIN_VERSION_PATCH=${PROJECT_VERSION_PATCH}
 		PRIVATE
-			#$<$<STREQUAL:${NAME},x64-SE-Debug>:BUILD_SE>
-			#"$<$<STREQUAL:${NAME},x64-SE-Release>:BUILD_SE>"
-			#"$<$<STREQUAL:${NAME},x64-AE-Debug>:BUILD_AE>"
-			#"$<$<STREQUAL:${NAME},x64-AE-Release>:BUILD_AE>"
+			"$<$<STREQUAL:${BUILD_CONFIG_NAME},x64-SE-Debug>:BUILD_SE>"
+			"$<$<STREQUAL:${BUILD_CONFIG_NAME},x64-SE-Release>:BUILD_SE>"
+			"$<$<STREQUAL:${BUILD_CONFIG_NAME},x64-VR-Debug>:BUILD_VR>"
+			"$<$<STREQUAL:${BUILD_CONFIG_NAME},x64-VR-Release>:BUILD_VR>"
+			"$<$<STREQUAL:${BUILD_CONFIG_NAME},x64-Debug>:BUILD_AE>"
+			"$<$<STREQUAL:${BUILD_CONFIG_NAME},x64-Release>:BUILD_AE>"
 	)
 endif()
 
@@ -110,6 +116,7 @@ set(headers
 	include/Logger.h
 	include/MotionDataContainer.h
 	include/pch.h
+	 include/plugin.h
 	include/Setting.h
 )
 
@@ -173,8 +180,11 @@ target_precompile_headers(
 		include/PCH.h
 )
 
-add_custom_command(TARGET AnimationMotionRevolution POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:AnimationMotionRevolution>
-	"$ENV{Skyrim64Dir}/Data/SKSE/Plugins/$<TARGET_FILE_NAME:AnimationMotionRevolution>"
+get_directory_property( DirDefs COMPILE_DEFINITIONS )
+message( "COMPILE_DEFINITIONS = ${DirDefs}" )
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}>
+	"C:/Program Files (x86)/Steam/steamapps/common/Skyrim Anniversary Edition/Data/SKSE/Plugins/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
 	COMMENT "Copying to SSE directory"
 )

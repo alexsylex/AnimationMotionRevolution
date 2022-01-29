@@ -1,28 +1,32 @@
 #include "Hooks.h"
 #include "INISettingCollection.h"
 #include "Logger.h"
+#include "Plugin.h"
 
-struct PluginInfoEx : SKSE::PluginInfo
+static constexpr Plugin plugin{ "Animation Motion Revolution" };
+
+extern "C" DLLEXPORT constinit auto SKSEPlugin_Version = []() constexpr -> SKSE::PluginVersionData 
 {
-	std::uint32_t minorVersion;
-	std::uint32_t patchVersion;
-	const char* iniFileName = "AnimationMotionRevolution.ini";
-};
+	SKSE::PluginVersionData v;
 
-static constexpr PluginInfoEx pluginInfo{ SKSE::PluginInfo::kVersion, "Animation Motion Revolution", 1, 4 };
+	v.PluginVersion(REL::Version{ plugin.versionMajor, plugin.versionMinor, plugin.versionPatch });
+	v.PluginName(plugin.name);
 
-extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Query(const SKSE::QueryInterface* a_skse, SKSE::PluginInfo* a_info)
+	v.UsesAddressLibrary(true);
+
+	return v;
+}();
+
+extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_skse)
 {
-	*a_info = pluginInfo;
-
-	if (!logger::init(pluginInfo.name))
+	if (!logger::init(plugin.fileName))
 	{
 		return false;
 	}
 
-	logger::info("{} {}.{}", pluginInfo.name, pluginInfo.version, pluginInfo.minorVersion);
+	logger::info("{} {}.{}", plugin.name, plugin.versionMajor, plugin.versionMinor);
 
-	if (a_skse->IsEditor())
+	if (a_skse->IsEditor()) 
 	{
 		logger::critical("Loaded in editor, marking as incompatible");
 
@@ -31,33 +35,27 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Query(const SKSE::QueryInterface* a
 
 	REL::Version runtimeVersion = a_skse->RuntimeVersion();
 
-	if (runtimeVersion < SKSE::RUNTIME_1_5_39)
+	if (runtimeVersion < SKSE::RUNTIME_1_6_317)
 	{
 		logger::critical("Unsupported runtime version {}", runtimeVersion.string());
 
 		return false;
 	}
 
-	return true;
-}
-
-extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_skse)
-{
-	logger::info("{} succesfully loaded", pluginInfo.name);
-
 	SKSE::Init(a_skse);
 
 	AMR::INISettingCollection* iniSettingCollection = AMR::INISettingCollection::GetSingleton();
 
-	if (!iniSettingCollection->ReadFromFile(pluginInfo.iniFileName))
+	std::string iniFileName = std::string(plugin.fileName) + ".ini";
+	if (!iniSettingCollection->ReadFromFile(iniFileName))
 	{
-		logger::warn("Could not load {}", pluginInfo.iniFileName);
-	} 
+		logger::warn("Could not load {}", iniFileName);
+	}
 
-	bool enableLog = iniSettingCollection->GetSetting("bEnableLog:Debug")->GetBool();
+	bool enableLog = iniSettingCollection->GetSetting<bool>("bEnableLog:Debug");
 	if (enableLog)
 	{
-		auto loggerLevel = static_cast<logger::level>(iniSettingCollection->GetSetting("uLogLevel:Debug")->GetUInt());
+		auto loggerLevel = static_cast<logger::level>(iniSettingCollection->GetSetting<std::uint32_t>("uLogLevel:Debug"));
 		logger::set_level(loggerLevel, loggerLevel);
 	}
 	else
@@ -66,6 +64,8 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_s
 	}
 
 	AMR::InstallHooks();
+
+	logger::info("{} succesfully loaded", plugin.name);
 
 	return true;
 }

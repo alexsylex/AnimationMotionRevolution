@@ -345,6 +345,11 @@ namespace AMR
 			return getCharacter.getCode<RE::Character* (*)()>()();
 		};
 
+		logger::info("translation");
+		logger::flush();
+
+		return;
+
 		RE::Character* character = GetCharacter();
 		RE::hkbCharacter* hkbCharacter = GethkbCharacter(character);
 
@@ -424,6 +429,12 @@ namespace AMR
 
 			return character;
 		};
+
+		logger::info("translation");
+		logger::flush();
+
+		return;
+
 
 		RE::hkbCharacter* hkbCharacter = GethkbCharacter(GetCharacter());
 
