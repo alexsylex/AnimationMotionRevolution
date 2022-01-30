@@ -13,7 +13,7 @@ set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "")
 
 project(
 	AnimationMotionRevolution
-	VERSION 1.4.0
+	VERSION 1.5.0
 	LANGUAGES CXX
 )
 

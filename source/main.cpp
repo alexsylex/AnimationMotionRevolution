@@ -10,7 +10,9 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Query(const SKSE::QueryInterface* a
 {
 	a_info->infoVersion = SKSE::PluginInfo::kVersion;
 	a_info->name = plugin.name;
-	a_info->version = REL::Version{ plugin.versionMajor, plugin.versionMinor, plugin.versionPatch }.pack();
+	a_info->version = a_info->version = (static_cast<std::uint8_t>(plugin.versionMajor) << 24) |
+										(static_cast<std::uint8_t>(plugin.versionMinor) << 16) |
+										(static_cast<std::uint8_t>(plugin.versionPatch) << 8);
 
 	if (a_skse->IsEditor()) 
 	{
@@ -44,7 +46,7 @@ extern "C" DLLEXPORT constinit auto SKSEPlugin_Version = []() constexpr -> SKSE:
 
 extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_skse)
 {
-	if (!logger::init(plugin.fileName))
+	if (!logger::init(plugin.name))
 	{
 		return false;
 	}
