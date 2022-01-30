@@ -5,6 +5,30 @@
 
 static constexpr Plugin plugin{ "Animation Motion Revolution" };
 
+#if BUILD_SE
+extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Query(const SKSE::QueryInterface* a_skse, SKSE::PluginInfo* a_info)
+{
+	a_info->infoVersion = SKSE::PluginInfo::kVersion;
+	a_info->name = plugin.name;
+	a_info->version = REL::Version{ plugin.versionMajor, plugin.versionMinor, plugin.versionPatch }.pack();
+
+	if (a_skse->IsEditor()) 
+	{
+		logger::critical("Loaded in editor, marking as incompatible");
+		return false;
+	}
+
+	REL::Version runtimeVersion = a_skse->RuntimeVersion();
+
+	if (runtimeVersion < SKSE::RUNTIME_1_5_39 || runtimeVersion > SKSE::RUNTIME_1_5_97)
+	{
+		logger::critical("Unsupported runtime version {}", runtimeVersion.string());
+		return false;
+	}
+
+	return true;
+}
+#else
 extern "C" DLLEXPORT constinit auto SKSEPlugin_Version = []() constexpr -> SKSE::PluginVersionData 
 {
 	SKSE::PluginVersionData v;
@@ -16,6 +40,7 @@ extern "C" DLLEXPORT constinit auto SKSEPlugin_Version = []() constexpr -> SKSE:
 
 	return v;
 }();
+#endif
 
 extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_skse)
 {
@@ -25,22 +50,6 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_s
 	}
 
 	logger::info("{} {}.{}", plugin.name, plugin.versionMajor, plugin.versionMinor);
-
-	if (a_skse->IsEditor()) 
-	{
-		logger::critical("Loaded in editor, marking as incompatible");
-
-		return false;
-	}
-
-	REL::Version runtimeVersion = a_skse->RuntimeVersion();
-
-	if (runtimeVersion < SKSE::RUNTIME_1_6_317)
-	{
-		logger::critical("Unsupported runtime version {}", runtimeVersion.string());
-
-		return false;
-	}
 
 	SKSE::Init(a_skse);
 

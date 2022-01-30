@@ -94,10 +94,6 @@ if (MSVC)
 		PRIVATE
 			"$<$<STREQUAL:${BUILD_CONFIG_NAME},x64-SE-Debug>:BUILD_SE>"
 			"$<$<STREQUAL:${BUILD_CONFIG_NAME},x64-SE-Release>:BUILD_SE>"
-			"$<$<STREQUAL:${BUILD_CONFIG_NAME},x64-VR-Debug>:BUILD_VR>"
-			"$<$<STREQUAL:${BUILD_CONFIG_NAME},x64-VR-Release>:BUILD_VR>"
-			"$<$<STREQUAL:${BUILD_CONFIG_NAME},x64-Debug>:BUILD_AE>"
-			"$<$<STREQUAL:${BUILD_CONFIG_NAME},x64-Release>:BUILD_AE>"
 	)
 endif()
 
@@ -180,11 +176,10 @@ target_precompile_headers(
 		include/PCH.h
 )
 
-get_directory_property( DirDefs COMPILE_DEFINITIONS )
-message( "COMPILE_DEFINITIONS = ${DirDefs}" )
+set(DEPLOYMENT_DIR "C:/Program Files (x86)/Steam/steamapps/common/Skyrim Anniversary Edition")
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}>
-	"C:/Program Files (x86)/Steam/steamapps/common/Skyrim Anniversary Edition/Data/SKSE/Plugins/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
-	COMMENT "Copying to SSE directory"
+	"${DEPLOYMENT_DIR}/Data/SKSE/Plugins/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
+	COMMENT "Copying to ${DEPLOYMENT_DIR}/Data/SKSE/Plugins"
 )

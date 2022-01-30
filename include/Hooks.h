@@ -12,12 +12,12 @@ namespace AMR
 {
 	class hkbClipGenerator
 	{
-#if BUILD_AE
-		static constinit inline REL::ID ActivateId{ 59252 };
-		static constinit inline REL::ID DeactivateId{ 59254 };
-#elif BUILD_SE || BUILD_VR
+#if BUILD_SE
 		static constinit inline REL::ID ActivateId{ 58602 };
 		static constinit inline REL::ID DeactivateId{ 58604 };
+#else
+		static constinit inline REL::ID ActivateId{ 59252 };
+		static constinit inline REL::ID DeactivateId{ 59254 };
 #endif
 	public:
 
@@ -39,25 +39,27 @@ namespace AMR
 
 	class MotionDataContainer
 	{
-#if BUILD_AE
-		static constinit inline REL::ID ProcessTranslationDataId{ 32582 };
-		static constinit inline REL::ID ProcessRotationDataId{ 32583 };
-		static constinit inline REL::ID InterpolateRotationId{ 70836 };
-#elif BUILD_SE || BUILD_VR
+#if BUILD_SE
 		static constinit inline REL::ID ProcessTranslationDataId{ 31812 };
 		static constinit inline REL::ID ProcessRotationDataId{ 31813 };
 		static constinit inline REL::ID InterpolateRotationId{ 69459 };
+#else
+		static constinit inline REL::ID ProcessTranslationDataId{ 32582 };
+		static constinit inline REL::ID ProcessRotationDataId{ 32583 };
+		static constinit inline REL::ID InterpolateRotationId{ 70836 };
 #endif
 	public:
 
 		// Translation
-		static inline REL::Relocation<void (*)(std::uintptr_t*, float, RE::NiPoint3&)> ProcessTranslationData{ ProcessTranslationDataId };	// Called from unk_4DD5A0
-		static void ProcessTranslationData_Hook(RE::MotionDataContainer* a_this, float a_motionTime, RE::NiPoint3& a_translation, const RE::BSFixedString* a_clipName);
+		static inline REL::Relocation<void (*)(std::uintptr_t*, float, RE::NiPoint3&)> ProcessTranslationData{ ProcessTranslationDataId };
+		static void ProcessTranslationData_Hook(RE::MotionDataContainer* a_this, float a_motionTime, RE::NiPoint3& a_translation,
+												const RE::BSFixedString* a_clipName, RE::Character* a_character);
 
 		// Rotation
-		static inline REL::Relocation<void (*)(std::uintptr_t*, float, RE::NiQuaternion&)> ProcessRotationData{ ProcessRotationDataId };								   // Called from unk_4DD5F0
-		static inline REL::Relocation<void (*)(RE::NiQuaternion&, float, const RE::NiQuaternion&, const RE::NiQuaternion&)> InterpolateRotation{ InterpolateRotationId };  // Called from ProcessRotationData
-		static void ProcessRotationData_Hook(RE::MotionDataContainer* a_this, float a_motionTime, RE::NiQuaternion& a_rotation, const RE::BSFixedString* a_clipName);
+		static inline REL::Relocation<void (*)(std::uintptr_t*, float, RE::NiQuaternion&)> ProcessRotationData{ ProcessRotationDataId };
+		static inline REL::Relocation<void (*)(RE::NiQuaternion&, float, const RE::NiQuaternion&, const RE::NiQuaternion&)> InterpolateRotation{ InterpolateRotationId };
+		static void ProcessRotationData_Hook(RE::MotionDataContainer* a_this, float a_motionTime, RE::NiQuaternion& a_rotation, 
+											 const RE::BSFixedString* a_clipName, RE::Character* a_character);
 
 	private:
 
@@ -77,11 +79,11 @@ namespace AMR
 	};
 
 	class Character
-	{
-#if BUILD_AE
-		static constinit inline REL::ID ProcessMotionDataId{ 32703 };
-#elif BUILD_SE || BUILD_VR
+	{	
+#if BUILD_SE
 		static constinit inline REL::ID ProcessMotionDataId{ 31949 };
+#else
+		static constinit inline REL::ID ProcessMotionDataId{ 32703 };
 #endif
 	public:
 
@@ -132,32 +134,55 @@ namespace AMR
 		}
 
 		// Character::ProcessMotionData
-		{
-#if BUILD_AE
-			static constinit std::uint64_t translation1HookOffset = 0x298;
-			static constinit std::uint64_t translation2HookOffset = 0x2AA;
-			static constinit std::uint64_t rotation1HookOffset = 0x35C;
-			static constinit std::uint64_t rotation2HookOffset = 0x36D;
-#elif BUILD_SE || BUILD_VR
+		{			
+#if BUILD_SE
 			static constinit std::uint64_t translation1HookOffset = 0x28D;
 			static constinit std::uint64_t translation2HookOffset = 0x2A1;
 			static constinit std::uint64_t rotation1HookOffset = 0x355;
 			static constinit std::uint64_t rotation2HookOffset = 0x368;
-#endif
+
 			struct Hook : Xbyak::CodeGenerator
 			{
 				Hook(void* a_func)
 				{
 					Xbyak::Label hookLabel;
 
-					mov(r9, rbx);  // rbx = BSFixedString*
-					jmp(ptr[rip + hookLabel]);
+					sub(rsp, 0x28);
+					mov(ptr[rsp + 0x20], r13);	// r13 = Character*
+					mov(r9, rbx);				// rbx = BSFixedString*
+					call(ptr[rip + hookLabel]);
+					add(rsp, 0x28);
+					ret();
 
 					L(hookLabel);
 					dq(reinterpret_cast<std::uintptr_t>(a_func));
 				}
 			};
+#else
+			static constinit std::uint64_t translation1HookOffset = 0x298;
+			static constinit std::uint64_t translation2HookOffset = 0x2AA;
+			static constinit std::uint64_t rotation1HookOffset = 0x35C;
+			static constinit std::uint64_t rotation2HookOffset = 0x36D;
 
+			struct Hook : Xbyak::CodeGenerator
+			{
+				Hook(void* a_func)
+				{
+					Xbyak::Label hookLabel;
+
+					sub(rsp, 0x28);
+					mov(ptr[rsp + 0x20], r13);	// r13 = Character*
+					mov(r9, rbx);				// rbx - 0x14 = BSFixedString*
+					sub(r9, 0x14);
+					call(ptr[rip + hookLabel]);
+					add(rsp, 0x28);
+					ret();
+
+					L(hookLabel);
+					dq(reinterpret_cast<std::uintptr_t>(a_func));
+				}
+			};
+#endif
 			// Translation
 			SKSE::AutoTrampoline<5>(Character::ProcessMotionData.address() + translation1HookOffset,
 									Hook{ &MotionDataContainer::ProcessTranslationData_Hook });

@@ -278,8 +278,7 @@ namespace AMR
 
 							if (!animMotionData->rotationList.empty() && animMotionData->rotationList.back().time != boundAnimation->duration) 
 							{
-								logger::warn(
-									"Animation={} of hkbCharacter=0x{:08x} ends at {}, while custom rotation ends at {}",
+								logger::warn("Animation={} of hkbCharacter=0x{:08x} ends at {}, while custom rotation ends at {}",
 									a_this->animationName.c_str(), reinterpret_cast<std::uint64_t>(hkbCharacter),
 									boundAnimation->duration, animMotionData->rotationList.back().time);
 							}
@@ -329,29 +328,10 @@ namespace AMR
 	}
 	
 	void MotionDataContainer::ProcessTranslationData_Hook(RE::MotionDataContainer* a_this, float a_motionTime, 
-											  RE::NiPoint3& a_translation, const RE::BSFixedString* a_clipName)
+														  RE::NiPoint3& a_translation, const RE::BSFixedString* a_clipName,
+														  RE::Character* a_character)
 	{
-		static auto GetCharacter = []() -> RE::Character*
-		{
-			struct GetCharacter : Xbyak::CodeGenerator
-			{
-				GetCharacter()
-				{
-					mov(rax, r13); // r13 = Character*
-					ret();
-				}
-			} getCharacter;
-
-			return getCharacter.getCode<RE::Character* (*)()>()();
-		};
-
-		logger::info("translation");
-		logger::flush();
-
-		return;
-
-		RE::Character* character = GetCharacter();
-		RE::hkbCharacter* hkbCharacter = GethkbCharacter(character);
+		RE::hkbCharacter* hkbCharacter = GethkbCharacter(a_character);
 
 		AnimMotionData* animMotionData = CharacterClipAnimMotionMap::GetSingleton()->Get(hkbCharacter, *a_clipName);
 
@@ -412,31 +392,10 @@ namespace AMR
 	}
 
 	void MotionDataContainer::ProcessRotationData_Hook(RE::MotionDataContainer* a_this, float a_motionTime,
-		RE::NiQuaternion& a_rotation, const RE::BSFixedString* a_clipName)
+													   RE::NiQuaternion& a_rotation, const RE::BSFixedString* a_clipName, 
+													   RE::Character* a_character)
 	{
-		static auto GetCharacter = []() -> RE::Character*
-		{
-			struct GetCharacter : Xbyak::CodeGenerator
-			{
-				GetCharacter()
-				{
-					mov(rax, r13); // r13 = Character*
-					ret();
-				}
-			} getCharacter;
-
-			auto character = getCharacter.getCode<RE::Character* (*)()>()();
-
-			return character;
-		};
-
-		logger::info("translation");
-		logger::flush();
-
-		return;
-
-
-		RE::hkbCharacter* hkbCharacter = GethkbCharacter(GetCharacter());
+		RE::hkbCharacter* hkbCharacter = GethkbCharacter(a_character);
 
 		AnimMotionData* animMotionData = CharacterClipAnimMotionMap::GetSingleton()->Get(hkbCharacter, *a_clipName);
 

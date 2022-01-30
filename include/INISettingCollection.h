@@ -10,10 +10,10 @@ namespace AMR
 	// The best way I could find is to replicate that class layout into mine.
 	class INISettingCollection
 	{
-#if BUILD_AE
-		static constexpr inline REL::ID VTABLEID{ 187074 };
-#elif BUILD_SE || BUILD_VR
-		static constexpr inline REL::ID VTABLEID{ 230108 };
+#if BUILD_SE
+		static constexpr inline REL::ID vTableId{ 230108 };
+#else
+		static constexpr inline REL::ID vTableId{ 187074 };
 #endif
 	public:
 
