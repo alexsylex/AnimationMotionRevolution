@@ -55,7 +55,7 @@ extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_s
 
 	SKSE::Init(a_skse);
 
-	AMR::INISettingCollection* iniSettingCollection = AMR::INISettingCollection::GetSingleton();
+	::INISettingCollection* iniSettingCollection = ::INISettingCollection::GetSingleton();
 
 	std::string iniFileName = std::string(plugin.fileName) + ".ini";
 	if (!iniSettingCollection->ReadFromFile(iniFileName))

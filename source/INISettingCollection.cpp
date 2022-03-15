@@ -2,7 +2,7 @@
 
 #include "Logger.h"
 
-namespace AMR
+namespace
 {
 	INISettingCollection::INISettingCollection() noexcept
 	{

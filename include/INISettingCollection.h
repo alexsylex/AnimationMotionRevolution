@@ -4,7 +4,7 @@
 
 #include "Setting.h"
 
-namespace AMR
+namespace
 {
 	// Deriving from RE::INISettingCollection does not compile as the virtual functions are not defined (Unresolved external symbols).
 	// The best way I could find is to replicate that class layout into mine.
@@ -17,7 +17,7 @@ namespace AMR
 #endif
 	public:
 
-		static AMR::INISettingCollection* GetSingleton()
+		static INISettingCollection* GetSingleton()
 		{
 			static INISettingCollection singleton;
 
