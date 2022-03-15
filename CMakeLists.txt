@@ -105,6 +105,21 @@ find_package(spdlog REQUIRED CONFIG)
 # ---- Add source files ----
 
 set(headers
+	include/RE/H/hkQsTransform.h
+	include/RE/H/hkaAnimatedReferenceFrame.h
+	include/RE/H/hkaAnimation.h
+	include/RE/H/hkaAnimationBinding.h
+	include/RE/H/hkaAnimationControl.h
+	include/RE/H/hkaAnnotationTrack.h
+	include/RE/H/hkaDefaultAnimationControl.h
+	include/RE/H/hkaSplineCompressedAnimation.h
+	include/RE/H/hkbBehaviorGraph.h
+	include/RE/H/hkbContext.h
+	include/RE/H/hkbClipGenerator.h
+	include/RE/H/hkbGenerator.h
+	include/RE/H/hkbNode.h
+	include/RE/H/hkbStateMachine.h
+
 	include/AutoTrampoline.h
 	include/half.h
 	include/Hooks.h
@@ -112,9 +127,9 @@ set(headers
 	include/Logger.h
 	include/MotionDataContainer.h
 	include/pch.h
-	 include/plugin.h
+	include/plugin.h
 	include/Setting.h
-)
+ )
 
 set(sources
 	source/main.cpp
@@ -140,7 +155,7 @@ add_library(
 	${sources}
 	${CMAKE_CURRENT_BINARY_DIR}/version.rc
 	.clang-format
-)
+ )
 
 target_compile_features(
 	${PROJECT_NAME}

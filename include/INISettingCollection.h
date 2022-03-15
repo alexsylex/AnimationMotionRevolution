@@ -40,10 +40,10 @@ namespace AMR
 				subKey[0] = '\0';
 			}
 
-			if (OpenHandle()) 
+			if (_this()->OpenHandle(false))
 			{
-				Unk_09();
-				CloseHandle();
+				_this()->Unk_09();
+				_this()->CloseHandle();
 
 				return true;
 			}
@@ -52,45 +52,45 @@ namespace AMR
 		}
 
 		template <typename T = RE::Setting*>
-		T GetSetting(const char* a_name) { return This()->GetSetting(a_name); }
+		T GetSetting(const char* a_name) { return _this()->GetSetting(a_name);  }
+
 		template <>
-		bool GetSetting<bool>(const char* a_name) { return This()->GetSetting(a_name)->GetBool(); }
+		bool GetSetting<bool>(const char* a_name) { return GetSetting(a_name)->GetBool(); }
 		template <>
-		float GetSetting<float>(const char* a_name) { return This()->GetSetting(a_name)->GetFloat(); }
+		float GetSetting<float>(const char* a_name) { return GetSetting(a_name)->GetFloat(); }
 		template <>
-		std::int32_t GetSetting<std::int32_t>(const char* a_name) { return This()->GetSetting(a_name)->GetSInt(); }
+		std::int32_t GetSetting<std::int32_t>(const char* a_name) { return GetSetting(a_name)->GetSInt(); }
 		template <>
-		RE::Color GetSetting<RE::Color>(const char* a_name) { return This()->GetSetting(a_name)->GetColor(); }
+		RE::Color GetSetting<RE::Color>(const char* a_name) { return GetSetting(a_name)->GetColor(); }
 		template <>
-		const char* GetSetting<const char*>(const char* a_name) { return This()->GetSetting(a_name)->GetString(); }
+		const char* GetSetting<const char*>(const char* a_name) { return GetSetting(a_name)->GetString(); }
 		template <>
-		std::uint32_t GetSetting<std::uint32_t>(const char* a_name) { return This()->GetSetting(a_name)->GetUInt(); }
+		std::uint32_t GetSetting<std::uint32_t>(const char* a_name) { return GetSetting(a_name)->GetUInt(); }
 
 	private:
 
-		INISettingCollection();
+		INISettingCollection() noexcept;
 
+		// Virtual table auto-generation. Needed to replace the original class.
 		virtual ~INISettingCollection() = default;	// 00
 
-		// Virtual table auto-generation.
 		virtual void InsertSetting(RE::Setting*) { throw(""); }	 // 01
 		virtual void RemoveSetting(RE::Setting*) { throw(""); }	 // 02
 		virtual bool WriteSetting(RE::Setting*) { throw(""); }	 // 03
 		virtual bool ReadSetting(RE::Setting*) { throw(""); }	 // 04
-		virtual bool OpenHandle(bool = false) { throw(""); }	 // 05
+		virtual bool OpenHandle(bool) { throw(""); }			 // 05
 		virtual bool CloseHandle() { throw(""); }				 // 06
 		virtual void Unk_07() { throw(""); }					 // 07
 		virtual void Unk_08() { throw(""); }					 // 08
 		virtual void Unk_09() { throw(""); }					 // 09
 
-		RE::INISettingCollection* This() { return reinterpret_cast<RE::INISettingCollection*>(this); }
+		RE::INISettingCollection* _this() { return reinterpret_cast<RE::INISettingCollection*>(this); }
 
 		// members
 		char subKey[MAX_PATH];					  // 008
 		std::uint32_t pad10C;					  // 10C
 		void* handle;							  // 110
 		RE::BSSimpleList<RE::Setting*> settings;  // 118
-
 	};
 	static_assert(sizeof(INISettingCollection) == sizeof(RE::INISettingCollection));
 }
