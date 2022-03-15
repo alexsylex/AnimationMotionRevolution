@@ -2,7 +2,7 @@
 
 #include "Logger.h"
 
-namespace
+namespace alexsylex
 {
 	INISettingCollection::INISettingCollection() noexcept
 	{

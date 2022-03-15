@@ -4,7 +4,7 @@
 
 #include <windows.h>
 
-namespace
+namespace alexsylex
 {
 	// Deriving from RE::Setting does not compile as the virtual functions are not defined (Unresolved external symbols).
 	// The best way I could find is to replicate that class layout into mine.
