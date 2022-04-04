@@ -1,12 +1,12 @@
 #pragma once
 
-#include "AutoTrampoline.h"
+#include "utils/Trampoline.h"
 
 #include "RE/B/BShkbAnimationGraph.h"
 #include "RE/H/hkbClipGenerator.h"
 #include "RE/H/hkbContext.h"
 
-#include "MotionDataContainer.h"
+#include "RE/M/MotionDataContainer.h"
 
 namespace AMR
 {
@@ -97,6 +97,8 @@ namespace AMR
 
 		// hkbClipGenerator::Activate
 		{
+			static std::uintptr_t hookedAddress = hkbClipGenerator::Activate.address() + 0x66E;
+
 			struct Hook : Xbyak::CodeGenerator
 			{
 				Hook()
@@ -104,18 +106,22 @@ namespace AMR
 					Xbyak::Label hookLabel;
 
 					mov(rdx, r15);	// r15 = hkbContext*
-					jmp(ptr[rip + hookLabel]);
+					call(ptr[rip + hookLabel]);
+
+					ret();
 
 					L(hookLabel);
 					dq(reinterpret_cast<std::uintptr_t>(&hkbClipGenerator::ComputeStartTime_Hook));
 				}
 			};
 
-			hkbClipGenerator::ComputeStartTime = SKSE::AutoTrampoline<5>(hkbClipGenerator::Activate.address() + 0x66E, Hook{});
+			hkbClipGenerator::ComputeStartTime = utils::WriteCallTrampoline<5>(hookedAddress, Hook());
 		}
 
 		// hkbClipGenerator::Deactivate
 		{
+			static std::uintptr_t hookedAddress = hkbClipGenerator::Deactivate.address() + 0x1A;
+
 			struct Hook : Xbyak::CodeGenerator
 			{
 				Hook()
@@ -123,23 +129,25 @@ namespace AMR
 					Xbyak::Label hookLabel;
 
 					mov(rdx, r14);	// r14 = hkbContext*
-					jmp(ptr[rip + hookLabel]);
+					call(ptr[rip + hookLabel]);
+
+					ret();
 
 					L(hookLabel);
 					dq(reinterpret_cast<std::uintptr_t>(&hkbClipGenerator::ResetIgnoreStartTime_Hook));
 				}
 			};
 
-			hkbClipGenerator::ResetIgnoreStartTime = SKSE::AutoTrampoline<5>(hkbClipGenerator::Deactivate.address() + 0x1A, Hook{});
+			hkbClipGenerator::ResetIgnoreStartTime = utils::WriteCallTrampoline<5>(hookedAddress, Hook());
 		}
 
 		// Character::ProcessMotionData
 		{			
 #if BUILD_SE
-			static constinit std::uint64_t translation1HookOffset = 0x28D;
-			static constinit std::uint64_t translation2HookOffset = 0x2A1;
-			static constinit std::uint64_t rotation1HookOffset = 0x355;
-			static constinit std::uint64_t rotation2HookOffset = 0x368;
+			static std::uintptr_t translation1HookedAddress = Character::ProcessMotionData.address() + 0x28D;
+			static std::uintptr_t translation2HookedAddress = Character::ProcessMotionData.address() + 0x2A1;
+			static std::uintptr_t rotation1HookedAddress = Character::ProcessMotionData.address() + 0x355;
+			static std::uintptr_t rotation2HookedAddress = Character::ProcessMotionData.address() + 0x368;
 
 			struct Hook : Xbyak::CodeGenerator
 			{
@@ -148,10 +156,13 @@ namespace AMR
 					Xbyak::Label hookLabel;
 
 					sub(rsp, 0x28);
+
 					mov(ptr[rsp + 0x20], r13);	// r13 = Character*
 					mov(r9, rbx);				// rbx = BSFixedString*
 					call(ptr[rip + hookLabel]);
+
 					add(rsp, 0x28);
+
 					ret();
 
 					L(hookLabel);
@@ -159,10 +170,10 @@ namespace AMR
 				}
 			};
 #else
-			static constinit std::uint64_t translation1HookOffset = 0x298;
-			static constinit std::uint64_t translation2HookOffset = 0x2AA;
-			static constinit std::uint64_t rotation1HookOffset = 0x35C;
-			static constinit std::uint64_t rotation2HookOffset = 0x36D;
+			static std::uintptr_t translation1HookedAddress = Character::ProcessMotionData.address() + 0x298;
+			static std::uintptr_t translation2HookedAddress = Character::ProcessMotionData.address() + 0x2AA;
+			static std::uintptr_t rotation1HookedAddress = Character::ProcessMotionData.address() + 0x35C;
+			static std::uintptr_t rotation2HookedAddress = Character::ProcessMotionData.address() + 0x36D;
 
 			struct Hook : Xbyak::CodeGenerator
 			{
@@ -171,11 +182,14 @@ namespace AMR
 					Xbyak::Label hookLabel;
 
 					sub(rsp, 0x28);
+
 					mov(ptr[rsp + 0x20], r13);	// r13 = Character*
 					mov(r9, rbx);				// rbx - 0x14 = BSFixedString*
 					sub(r9, 0x14);
 					call(ptr[rip + hookLabel]);
+
 					add(rsp, 0x28);
+
 					ret();
 
 					L(hookLabel);
@@ -184,16 +198,12 @@ namespace AMR
 			};
 #endif
 			// Translation
-			SKSE::AutoTrampoline<5>(Character::ProcessMotionData.address() + translation1HookOffset,
-									Hook{ &MotionDataContainer::ProcessTranslationData_Hook });
-			SKSE::AutoTrampoline<5>(Character::ProcessMotionData.address() + translation2HookOffset,
-									Hook{ &MotionDataContainer::ProcessTranslationData_Hook });
+			utils::WriteCallTrampoline<5>(translation1HookedAddress, Hook(&MotionDataContainer::ProcessTranslationData_Hook));
+			utils::WriteCallTrampoline<5>(translation2HookedAddress, Hook(&MotionDataContainer::ProcessTranslationData_Hook));
 
 			// Rotation
-			SKSE::AutoTrampoline<5>(Character::ProcessMotionData.address() + rotation1HookOffset,
-									Hook{ &MotionDataContainer::ProcessRotationData_Hook });
-			SKSE::AutoTrampoline<5>(Character::ProcessMotionData.address() + rotation2HookOffset,
-									Hook{ &MotionDataContainer::ProcessRotationData_Hook });
+			utils::WriteCallTrampoline<5>(rotation1HookedAddress, Hook(&MotionDataContainer::ProcessRotationData_Hook));
+			utils::WriteCallTrampoline<5>(rotation2HookedAddress, Hook(&MotionDataContainer::ProcessRotationData_Hook));
 		}
 	}
 }

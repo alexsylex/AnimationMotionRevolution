@@ -8,9 +8,9 @@ class half
 {
 public:
 
-	half(std::uint16_t a_value)
-	: value{ a_value }
-	{ }
+	//half(std::uint16_t a_value)
+	//: value{ a_value }
+	//{ }
 
 	half(float a_value)
 	: value{ _mm_cvtps_ph([&a_value]() -> __m128 
@@ -19,7 +19,8 @@ public:
 							value128.m128_f32[0] = a_value;
 
 							return value128;
-						  }(), 1).m128i_u16[0] }
+						  }(), 1).m128i_u16[0] 
+	  }
 	{ }
 
 	inline operator float()

@@ -119,22 +119,22 @@ set(headers
 	include/RE/H/hkbGenerator.h
 	include/RE/H/hkbNode.h
 	include/RE/H/hkbStateMachine.h
-
-	include/AutoTrampoline.h
-	include/half.h
+	include/RE/M/MotionDataContainer.h
+	include/utils/Trampoline.h
+	include/utils/INISettingCollection.h
+	include/utils/half.h
+	include/utils/Logger.h
+	include/utils/Setting.h
+	include/AnimMotionData.h
 	include/Hooks.h
-	include/INISettingCollection.h
-	include/Logger.h
-	include/MotionDataContainer.h
 	include/pch.h
 	include/plugin.h
-	include/Setting.h
  )
 
 set(sources
-	source/main.cpp
+	source/utils/INISettingCollection.cpp
 	source/Hooks.cpp
-	source/INISettingCollection.cpp
+	source/main.cpp
 	source/pch.cpp
 )
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "half.h"
+#include "utils/half.h"
 
 namespace RE
 {
@@ -103,5 +103,3 @@ namespace RE
 		unsigned int	rotationSegCount;		// 18
 	};
 }
-
-static_assert(sizeof(std::array<char, 10>) == 10);

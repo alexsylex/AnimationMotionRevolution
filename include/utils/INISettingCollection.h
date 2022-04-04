@@ -4,7 +4,7 @@
 
 #include "Setting.h"
 
-namespace alexsylex
+namespace utils
 {
 	// Deriving from RE::INISettingCollection does not compile as the virtual functions are not defined (Unresolved external symbols).
 	// The best way I could find is to replicate that class layout into mine.
@@ -16,7 +16,6 @@ namespace alexsylex
 		static constexpr inline REL::ID vTableId{ 187074 };
 #endif
 	public:
-
 		static INISettingCollection* GetSingleton()
 		{
 			static INISettingCollection singleton;
@@ -24,51 +23,59 @@ namespace alexsylex
 			return &singleton;
 		}
 
-		bool ReadFromFile(std::string_view a_fileName)
+		template <typename Last>
+		void AddSettings(Last a_last)
 		{
-			std::filesystem::path iniPath = std::filesystem::current_path().append("Data\\SKSE\\Plugins").append(a_fileName);
+			_this()->InsertSetting(a_last);
+		}
 
-			// Reference: decompiled source code in 1.5.97
-			if (iniPath.string().c_str())
-			{
-				if (iniPath.string().c_str() != subKey) 
-				{
-					strcpy_s(subKey, iniPath.string().c_str());
-				}
-			} else 
-			{
-				subKey[0] = '\0';
-			}
-
-			if (_this()->OpenHandle(false))
-			{
-				_this()->Unk_09();
-				_this()->CloseHandle();
-
-				return true;
-			}
-
-			return false;
+		template <typename First, typename... Rest>
+		void AddSettings(First a_first, Rest... a_rest)
+		{
+			_this()->InsertSetting(a_first);
+			AddSettings(a_rest...);
 		}
 
 		template <typename T = RE::Setting*>
-		T GetSetting(const char* a_name) { return _this()->GetSetting(a_name);  }
+		T GetSetting(const char* a_name) const
+		{
+			return const_cast<RE::INISettingCollection*>(_this())->GetSetting(a_name);
+		}
 
 		template <>
-		bool GetSetting<bool>(const char* a_name) { return GetSetting(a_name)->GetBool(); }
+		bool GetSetting<bool>(const char* a_name) const
+		{
+			return GetSetting(a_name)->GetBool();
+		}
 		template <>
-		float GetSetting<float>(const char* a_name) { return GetSetting(a_name)->GetFloat(); }
+		float GetSetting<float>(const char* a_name) const
+		{
+			return GetSetting(a_name)->GetFloat();
+		}
 		template <>
-		std::int32_t GetSetting<std::int32_t>(const char* a_name) { return GetSetting(a_name)->GetSInt(); }
+		std::int32_t GetSetting<std::int32_t>(const char* a_name) const
+		{
+			return GetSetting(a_name)->GetSInt();
+		}
 		template <>
-		RE::Color GetSetting<RE::Color>(const char* a_name) { return GetSetting(a_name)->GetColor(); }
+		RE::Color GetSetting<RE::Color>(const char* a_name) const
+		{
+			return GetSetting(a_name)->GetColor();
+		}
 		template <>
-		const char* GetSetting<const char*>(const char* a_name) { return GetSetting(a_name)->GetString(); }
+		const char* GetSetting<const char*>(const char* a_name) const
+		{
+			return GetSetting(a_name)->GetString();
+		}
 		template <>
-		std::uint32_t GetSetting<std::uint32_t>(const char* a_name) { return GetSetting(a_name)->GetUInt(); }
+		std::uint32_t GetSetting<std::uint32_t>(const char* a_name) const
+		{
+			return GetSetting(a_name)->GetUInt();
+		}
+
+		bool ReadFromFile(std::string_view a_fileName);
 
 	private:
-
 		INISettingCollection() noexcept;
 
 		// Virtual table auto-generation. Needed to replace the original class.
@@ -85,6 +92,7 @@ namespace alexsylex
 		virtual void Unk_09() { throw(""); }					 // 09
 
 		RE::INISettingCollection* _this() { return reinterpret_cast<RE::INISettingCollection*>(this); }
+		const RE::INISettingCollection* _this() const { return reinterpret_cast<const RE::INISettingCollection*>(this); }
 
 		// members
 		char subKey[MAX_PATH];					  // 008
