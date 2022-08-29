@@ -40,7 +40,7 @@ namespace utils
 	static constexpr std::uintptr_t WriteBranchTrampoline(std::uintptr_t a_location, const Xbyak::CodeGenerator& a_hookCode)
 	{
 		auto& hookCode = const_cast<Xbyak::CodeGenerator&>(a_hookCode);
-
+		
 		AllocExactSizeTrampoline<N>(hookCode);
 
 		return SKSE::GetTrampoline().write_branch<N>(a_location, SKSE::GetTrampoline().allocate(hookCode));

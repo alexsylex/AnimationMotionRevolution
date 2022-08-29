@@ -8,17 +8,13 @@
 
 #include "RE/M/MotionDataContainer.h"
 
-namespace AMR
+namespace hooks
 {
 	class hkbClipGenerator
 	{
-#if BUILD_SE
-		static constinit inline REL::ID ActivateId{ 58602 };
-		static constinit inline REL::ID DeactivateId{ 58604 };
-#else
-		static constinit inline REL::ID ActivateId{ 59252 };
-		static constinit inline REL::ID DeactivateId{ 59254 };
-#endif
+		static constexpr REL::RelocationID ActivateId = RELOCATION_ID(58602, 59252);
+		static constexpr REL::RelocationID DeactivateId = RELOCATION_ID(58604, 59254);
+
 	public:
 
 		static inline REL::Relocation<std::uintptr_t> Activate{ ActivateId };
@@ -39,15 +35,10 @@ namespace AMR
 
 	class MotionDataContainer
 	{
-#if BUILD_SE
-		static constinit inline REL::ID ProcessTranslationDataId{ 31812 };
-		static constinit inline REL::ID ProcessRotationDataId{ 31813 };
-		static constinit inline REL::ID InterpolateRotationId{ 69459 };
-#else
-		static constinit inline REL::ID ProcessTranslationDataId{ 32582 };
-		static constinit inline REL::ID ProcessRotationDataId{ 32583 };
-		static constinit inline REL::ID InterpolateRotationId{ 70836 };
-#endif
+		static constexpr REL::RelocationID ProcessTranslationDataId = RELOCATION_ID(31812, 32582);
+		static constexpr REL::RelocationID ProcessRotationDataId = RELOCATION_ID(31813, 32583);
+		static constexpr REL::RelocationID InterpolateRotationId = RELOCATION_ID(69459, 70836);
+
 	public:
 
 		// Translation
@@ -80,20 +71,17 @@ namespace AMR
 
 	class Character
 	{	
-#if BUILD_SE
-		static constinit inline REL::ID ProcessMotionDataId{ 31949 };
-#else
-		static constinit inline REL::ID ProcessMotionDataId{ 32703 };
-#endif
+		static constexpr REL::RelocationID ProcessMotionDataId = RELOCATION_ID(31949, 32703);
+
 	public:
 
 		static inline REL::Relocation<std::uintptr_t> ProcessMotionData{ ProcessMotionDataId };
 	};
 
-	static inline void InstallHooks()
+	static inline void Install()
 	{
-		// As Bethesda used Havok libraries already compiled, neither registers 
-		// nor offsets changed between SE-AE
+		// Bethesda used compiled Havok libraries, so neither registers 
+		// nor offsets changed between SE-AE for the hkbClipGenerator hooks
 
 		// hkbClipGenerator::Activate
 		{
@@ -104,18 +92,19 @@ namespace AMR
 				Hook()
 				{
 					Xbyak::Label hookLabel;
+					Xbyak::Label retnLabel;
 
 					mov(rdx, r15);	// r15 = hkbContext*
 					call(ptr[rip + hookLabel]);
 
-					ret();
+					jmp(ptr[rip + retnLabel]);
 
-					L(hookLabel);
-					dq(reinterpret_cast<std::uintptr_t>(&hkbClipGenerator::ComputeStartTime_Hook));
+					L(hookLabel), dq(reinterpret_cast<std::uintptr_t>(&hkbClipGenerator::ComputeStartTime_Hook));
+					L(retnLabel), dq(hookedAddress + 5);
 				}
 			};
 
-			hkbClipGenerator::ComputeStartTime = utils::WriteCallTrampoline<5>(hookedAddress, Hook());
+			hkbClipGenerator::ComputeStartTime = utils::WriteBranchTrampoline<5>(hookedAddress, Hook());
 		}
 
 		// hkbClipGenerator::Deactivate
@@ -127,27 +116,27 @@ namespace AMR
 				Hook()
 				{
 					Xbyak::Label hookLabel;
+					Xbyak::Label retnLabel;
 
 					mov(rdx, r14);	// r14 = hkbContext*
 					call(ptr[rip + hookLabel]);
 
-					ret();
+					jmp(ptr[rip + retnLabel]);
 
-					L(hookLabel);
-					dq(reinterpret_cast<std::uintptr_t>(&hkbClipGenerator::ResetIgnoreStartTime_Hook));
+					L(hookLabel), dq(reinterpret_cast<std::uintptr_t>(&hkbClipGenerator::ResetIgnoreStartTime_Hook));
+					L(retnLabel), dq(hookedAddress + 5);
 				}
 			};
 
-			hkbClipGenerator::ResetIgnoreStartTime = utils::WriteCallTrampoline<5>(hookedAddress, Hook());
+			hkbClipGenerator::ResetIgnoreStartTime = utils::WriteBranchTrampoline<5>(hookedAddress, Hook());
 		}
 
 		// Character::ProcessMotionData
-		{			
-#if BUILD_SE
-			static std::uintptr_t translation1HookedAddress = Character::ProcessMotionData.address() + 0x28D;
-			static std::uintptr_t translation2HookedAddress = Character::ProcessMotionData.address() + 0x2A1;
-			static std::uintptr_t rotation1HookedAddress = Character::ProcessMotionData.address() + 0x355;
-			static std::uintptr_t rotation2HookedAddress = Character::ProcessMotionData.address() + 0x368;
+		{
+			static std::uintptr_t translation1HookedAddress = Character::ProcessMotionData.address() + (REL::Module::IsSE() ? 0x28D : 0x298);
+			static std::uintptr_t translation2HookedAddress = Character::ProcessMotionData.address() + (REL::Module::IsSE() ? 0x2A1 : 0x2AA);
+			static std::uintptr_t rotation1HookedAddress = Character::ProcessMotionData.address() + (REL::Module::IsSE() ? 0x355 : 0x35C);
+			static std::uintptr_t rotation2HookedAddress = Character::ProcessMotionData.address() + (REL::Module::IsSE() ? 0x368 : 0x36D);
 
 			struct Hook : Xbyak::CodeGenerator
 			{
@@ -158,50 +147,26 @@ namespace AMR
 					sub(rsp, 0x28);
 
 					mov(ptr[rsp + 0x20], r13);	// r13 = Character*
-					mov(r9, rbx);				// rbx = BSFixedString*
+					mov(r9, rbx);				// SE: rbx = BSFixedString*
+					if (REL::Module::IsAE())
+					{
+						sub(r9, 0x14);			// AE: rbx - 0x14 = BSFixedString*
+					}
 					call(ptr[rip + hookLabel]);
 
 					add(rsp, 0x28);
 
 					ret();
 
-					L(hookLabel);
-					dq(reinterpret_cast<std::uintptr_t>(a_func));
+					L(hookLabel), dq(reinterpret_cast<std::uintptr_t>(a_func));
 				}
 			};
-#else
-			static std::uintptr_t translation1HookedAddress = Character::ProcessMotionData.address() + 0x298;
-			static std::uintptr_t translation2HookedAddress = Character::ProcessMotionData.address() + 0x2AA;
-			static std::uintptr_t rotation1HookedAddress = Character::ProcessMotionData.address() + 0x35C;
-			static std::uintptr_t rotation2HookedAddress = Character::ProcessMotionData.address() + 0x36D;
 
-			struct Hook : Xbyak::CodeGenerator
-			{
-				Hook(void* a_func)
-				{
-					Xbyak::Label hookLabel;
-
-					sub(rsp, 0x28);
-
-					mov(ptr[rsp + 0x20], r13);	// r13 = Character*
-					mov(r9, rbx);				// rbx - 0x14 = BSFixedString*
-					sub(r9, 0x14);
-					call(ptr[rip + hookLabel]);
-
-					add(rsp, 0x28);
-
-					ret();
-
-					L(hookLabel);
-					dq(reinterpret_cast<std::uintptr_t>(a_func));
-				}
-			};
-#endif
 			// Translation
 			utils::WriteCallTrampoline<5>(translation1HookedAddress, Hook(&MotionDataContainer::ProcessTranslationData_Hook));
 			utils::WriteCallTrampoline<5>(translation2HookedAddress, Hook(&MotionDataContainer::ProcessTranslationData_Hook));
 
-			// Rotation
+			//// Rotation
 			utils::WriteCallTrampoline<5>(rotation1HookedAddress, Hook(&MotionDataContainer::ProcessRotationData_Hook));
 			utils::WriteCallTrampoline<5>(rotation2HookedAddress, Hook(&MotionDataContainer::ProcessRotationData_Hook));
 		}

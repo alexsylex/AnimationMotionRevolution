@@ -1,6 +1,6 @@
 {
     "name": "animationmotionrevolution",
-    "version-string": "1.5.0",
+    "version-string": "1.5.1",
     "description": "",
     "homepage": "https://github.com/alexsylex/AnimationMotionRevolution",
     "license": "MIT",
@@ -11,6 +11,8 @@
         "rsm-binary-io",
         "span-lite",
         "spdlog",
-        "xbyak"
+        "xbyak",
+        "tsl-ordered-map",
+        "commonlibsse-ng-flatrim"
     ]
 }

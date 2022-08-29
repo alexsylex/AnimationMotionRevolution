@@ -9,7 +9,7 @@ namespace utils
 		REL::Relocation<std::uintptr_t> __vTable(*reinterpret_cast<std::uintptr_t*>(this));
 
 		// Use the Skyrim's INISettingCollection virtual functions
-		std::uintptr_t* skyrimsVTable = REL::Relocation<std::uintptr_t*>{ vTableId }.get();
+		static std::uintptr_t* skyrimsVTable = REL::Relocation<std::uintptr_t*>{ vTableId }.get();
 
 		// Replace all except the destructor (index 0)
 		for (int i = 1; i < 10; i++) {

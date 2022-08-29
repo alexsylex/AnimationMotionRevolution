@@ -10,11 +10,8 @@ namespace utils
 	// The best way I could find is to replicate that class layout into mine.
 	class INISettingCollection
 	{
-#if BUILD_SE
-		static constexpr inline REL::ID vTableId{ 230108 };
-#else
-		static constexpr inline REL::ID vTableId{ 187074 };
-#endif
+		static constexpr REL::RelocationID vTableId = RELOCATION_ID(230108, 187074);
+
 	public:
 		static INISettingCollection* GetSingleton()
 		{
