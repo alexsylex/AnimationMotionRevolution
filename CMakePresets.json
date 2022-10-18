@@ -10,7 +10,7 @@
             "name": "base",
             "hidden": true,
             "cacheVariables": {
-                "CMAKE_CXX_FLAGS": "$env{COMMONLIBSSE_COMPILER} $env{COMMONLIBSSE_PLATFORM} $env{COMMONLIBSSE_TEXT}"
+                "CMAKE_CXX_FLAGS": "$env{COMMONLIBSSE_COMPILER} $env{COMMONLIBSSE_PLATFORM} $env{COMMONLIBSSE_TEXT} $env{RUNTIME_DISABLE_FLAGS}"
             }
         },
         {
@@ -50,9 +50,6 @@
         {
             "name": "msvc",
             "hidden": true,
-            "environment": {
-                "COMMONLIBSSE_COMPILER": "/permissive- /Zc:preprocessor /EHsc $penv{CXXFLAGS}"
-            },
             "vendor": {
                 "microsoft.com/VisualStudioSettings/CMake/1.0": {
                     "intelliSenseMode": "windows-msvc-x64",
@@ -62,7 +59,8 @@
             }
         },
         {
-            "name": "build-debug-msvc",
+            "name": "build-debug",
+            "hidden": true,
             "inherits": [
                 "base",
                 "vcpkg",
@@ -70,10 +68,7 @@
                 "x64",
                 "msvc"
             ],
-            "displayName": "Debug",
-            "description": "Debug build for testing.",
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/debug-msvc",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": {
                     "type": "STRING",
@@ -82,7 +77,8 @@
             }
         },
         {
-            "name": "build-release-msvc",
+            "name": "build-relwithdebinfo",
+            "hidden": true,
             "inherits": [
                 "base",
                 "vcpkg",
@@ -90,56 +86,123 @@
                 "x64",
                 "msvc"
             ],
-            "displayName": "Release",
-            "description": "Optimized release build.",
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/release-msvc",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": {
-                    "type": "STRING",
-                    "value": "Release"
-                }
-            }
-        },
-        {
-            "name": "build-release-with-debug-info-msvc",
-            "inherits": [
-                "base",
-                "vcpkg",
-                "win32-unicode",
-                "x64",
-                "msvc"
-            ],
-            "displayName": "RelWithDebInfo",
-            "description": "Optimized release build, but with info for testing.",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/release-with-debug-info-msvc",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": {
                     "type": "STRING",
                     "value": "RelWithDebInfo"
                 }
             }
+        },
+        {
+            "name": "all",
+            "hidden": true,
+            "environment": {
+                "RUNTIME_DISABLE_FLAGS": "",
+                "COMMONLIBSSE_COMPILER": "/permissive- /Zc:preprocessor /EHsc $penv{CXXFLAGS} -DENABLE_COMMONLIBSSE_TESTING $env{RUNTIME_DISABLE_FLAGS}"
+            }
+        },
+        {
+            "name": "se-ae",
+            "hidden": true,
+            "environment": {
+                "RUNTIME_DISABLE_FLAGS": "-UENABLE_SKYRIM_VR",
+                "COMMONLIBSSE_COMPILER": "/permissive- /Zc:preprocessor /EHsc $penv{CXXFLAGS} -DENABLE_COMMONLIBSSE_TESTING $env{RUNTIME_DISABLE_FLAGS}"
+            }
+        },
+        {
+            "name": "vr",
+            "hidden": true,
+            "environment": {
+                "RUNTIME_DISABLE_FLAGS": "-UENABLE_SKYRIM_SE -UENABLE_SKYRIM_AE",
+                "COMMONLIBSSE_COMPILER": "/permissive- /Zc:preprocessor /EHsc $penv{CXXFLAGS} -DENABLE_COMMONLIBSSE_TESTING $env{RUNTIME_DISABLE_FLAGS}"
+            }
+        },
+        {
+            "name": "build-debug-all",
+            "inherits": [
+                "build-debug",
+                "all"
+            ],
+            "displayName": "Debug",
+            "binaryDir": "${sourceDir}/build/debug"
+        },
+        {
+            "name": "build-relwithdebinfo-all",
+            "inherits": [
+                "build-relwithdebinfo",
+                "all"
+            ],
+            "displayName": "RelWithDebInfo",
+            "binaryDir": "${sourceDir}/build/relwithdebinfo"
+        },
+        {
+            "name": "build-debug-se-ae",
+            "inherits": [
+                "build-debug",
+                "se-ae"
+            ],
+            "displayName": "Debug (SE-AE only)",
+            "binaryDir": "${sourceDir}/build/debug-se-ae-only"
+        },
+        {
+            "name": "build-relwithdebinfo-se-ae",
+            "inherits": [
+                "build-relwithdebinfo",
+                "se-ae"
+            ],
+            "displayName": "RelWithDebInfo (SE-AE only)",
+            "binaryDir": "${sourceDir}/build/relwithdebinfo-se-ae-only"
+        },
+        {
+            "name": "build-debug-vr",
+            "inherits": [
+                "build-debug",
+                "vr"
+            ],
+            "displayName": "Debug (VR only)",
+            "binaryDir": "${sourceDir}/build/debug-vr-only"
+        },
+        {
+            "name": "build-relwithdebinfo-vr",
+            "inherits": [
+                "build-relwithdebinfo",
+                "vr"
+            ],
+            "displayName": "RelWithDebInfo (VR only)",
+            "binaryDir": "${sourceDir}/build/relwithdebinfo-vr-only"
         }
     ],
     "buildPresets": [
         {
-            "name": "release-msvc",
-            "displayName": "Release (MSVC)",
-            "configurePreset": "build-release-msvc",
-            "description": "Optimized release build."
+            "name": "debug-all",
+            "displayName": "Debug",
+            "configurePreset": "build-debug-all"
         },
         {
-            "name": "debug-msvc",
-            "displayName": "Debug (MSVC)",
-            "configurePreset": "build-debug-msvc",
-            "description": "Debug build for testing."
+            "name": "relwithdebinfo-all",
+            "displayName": "RelWithDebInfo",
+            "configurePreset": "build-relwithdebinfo-all"
         },
         {
-            "name": "release-with-debug-info-msvc",
-            "displayName": "RelWithDebInfo (MSVC)",
-            "configurePreset": "build-release-with-debug-info-msvc",
-            "description": "Optimized release build, but with info for testing."
+            "name": "debug-se-ae",
+            "displayName": "Debug (SE-AE only)",
+            "configurePreset": "build-debug-se-ae"
+        },
+        {
+            "name": "relwithdebinfo-se-ae",
+            "displayName": "RelWithDebInfo (SE-AE only)",
+            "configurePreset": "build-relwithdebinfo-se-ae"
+        },
+        {
+            "name": "debug-vr",
+            "displayName": "Debug (VR only)",
+            "configurePreset": "build-debug-vr"
+        },
+        {
+            "name": "relwithdebinfo-vr",
+            "displayName": "RelWithDebInfo (VR only)",
+            "configurePreset": "build-relwithdebinfo-vr"
         }
     ]
 }

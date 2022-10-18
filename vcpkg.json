@@ -1,18 +1,16 @@
 {
     "name": "animationmotionrevolution",
-    "version-string": "1.5.1",
+    "version-string": "1.5.3",
     "description": "",
     "homepage": "https://github.com/alexsylex/AnimationMotionRevolution",
     "license": "MIT",
     "dependencies": [
         "boost-atomic",
         "boost-stl-interfaces",
-        "fmt",
         "rsm-binary-io",
         "span-lite",
-        "spdlog",
         "xbyak",
         "tsl-ordered-map",
-        "commonlibsse-ng-flatrim"
+        "commonlibsse-ng"
     ]
 }

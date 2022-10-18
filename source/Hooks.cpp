@@ -4,6 +4,11 @@
 
 #include "utils/Logger.h"
 
+#include "RE/H/hkpCharacterMovementUtil.h"
+#include "RE/H/hkVector4.h"
+
+#include "RE/RTTI.h"
+
 namespace hooks
 {
 	// Container for each character instance that is playing an animation with custom motion data
@@ -172,6 +177,7 @@ namespace hooks
 	void hkbClipGenerator::ResetIgnoreStartTime_Hook(const RE::hkbClipGenerator* a_this, const RE::hkbContext* a_hkbContext)
 	{
 		auto characterClipAnimMotionMap = CharacterClipAnimMotionMap::GetSingleton();
+
 		RE::BSSpinLockGuard lockguard(characterClipAnimMotionMap->lock);
 
 		const RE::hkaAnimation* boundAnimation = GetBoundAnimation(a_this);
@@ -207,6 +213,7 @@ namespace hooks
 														  RE::Character* a_character)
 	{
 		auto characterClipAnimMotionMap = CharacterClipAnimMotionMap::GetSingleton();
+
 		RE::BSSpinLockGuard lockguard(characterClipAnimMotionMap->lock);
 
 		RE::hkbCharacter* hkbCharacter = GethkbCharacter(a_character);
@@ -249,6 +256,12 @@ namespace hooks
 																   RE::NiPoint3{ 0.0f, 0.0f, 0.0f };
 
 					a_translation = (curSegTranslation * segProgress + prevSegTranslation * (1.0f - segProgress));
+
+					auto charController = a_character->GetCharController();
+					auto charStateOnGround = reinterpret_cast<RE::bhkCharacterStateOnGround*>(charController->context.stateManager->registeredState[RE::hkpCharacterStateType::kOnGround]);
+
+					charStateOnGround->unk10 = a_translation.z == 0.0;
+
 
 					return;
 				}
@@ -334,5 +347,110 @@ namespace hooks
 		}
 
 		a_rotation = RE::NiQuaternion{ 1.0f, 0.0f, 0.0f, 0.0f };
+	}
+
+	RE::hkpCharacterStateType hkpCharacterContext::GetCharacterState_Hook(RE::hkpCharacterContext* a_this)
+	{
+		auto charStateOnGround = reinterpret_cast<RE::bhkCharacterStateOnGround*>(a_this->stateManager->registeredState[RE::hkpCharacterStateType::kOnGround]);
+
+		return charStateOnGround->unk10 ? a_this->currentState : RE::hkpCharacterStateType::kSwimming;
+	}
+
+	void SimulateStatePhysics(RE::bhkCharacterStateOnGround* a_this, RE::bhkCharacterController* a_characterController)
+	{
+		RE::Character* character = nullptr;
+		for (RE::BSTEventSink<RE::bhkCharacterMoveFinishEvent>* sink : a_characterController->sinks)
+		{
+			character = skyrim_cast<RE::Character*>(sink);
+			if (character)
+			{
+				break;
+			}
+			else
+			{
+				character = skyrim_cast<RE::PlayerCharacter*>(sink);
+				if (character)
+				{
+					break;
+				}
+			}
+		}
+
+		RE::BSAnimationGraphManagerPtr animGraphManager;
+
+		if (character && character->GetAnimationGraphManager(animGraphManager))
+		{
+			std::uint32_t activeGraph = animGraphManager->GetRuntimeData().activeGraph;
+
+			RE::BShkbAnimationGraph* animGraph = animGraphManager->graphs[activeGraph].get();
+			RE::BSTEventSource<RE::BSAnimationGraphEvent>* animGraphEventSource = animGraph;
+
+			RE::BSAnimationGraphEvent event{};
+
+			animGraphEventSource->SendEvent(&event);
+		}
+
+		RE::bhkWorld* world = a_characterController->GetHavokWorld();
+
+		RE::hkVector4 position = a_characterController->GetPosition();
+
+		a_characterController->fallStartHeight = position.z * 69.991249;
+
+		std::uint32_t collisionFilterInfo;
+		a_characterController->GetCollisionFilterInfo(collisionFilterInfo);
+
+		RE::bhkPickData pickData;
+		pickData.rayInput.from = position;
+		pickData.rayInput.to = position - RE::hkVector4{ 0.0F, 0.0F, 0.5F, 0.0F };
+		pickData.rayInput.filterInfo = collisionFilterInfo;
+
+		world->PickObject(pickData);
+
+		if (pickData.rayOutput.rootCollidable)
+		{
+			if (pickData.rayOutput.normal.z < a_characterController->unk300)
+			{
+				a_characterController->flags.set(RE::CHARACTER_FLAGS::kSupport);
+			}
+		}
+		else
+		{
+			a_characterController->wantState = RE::hkpCharacterStateType::kInAir;
+			a_characterController->flags.reset(RE::CHARACTER_FLAGS::kSupport);
+		}
+
+		RE::hkVector4 desiredVelocity = a_characterController->velocityMod;
+
+		desiredVelocity.x = a_characterController->velocityMod.y;
+		desiredVelocity.y = a_characterController->velocityMod.x;
+		
+		RE::hkpCharacterMovementUtil::hkpMovementUtilInput movementUtil;
+		movementUtil.forward = a_characterController->forwardVec;
+		movementUtil.up = RE::hkVector4{ 0.0F, 0.0F, 1.0F, 0.0F };
+		movementUtil.surfaceNormal = a_characterController->supportNorm;
+		movementUtil.currentVelocity = a_characterController->outVelocity;
+		movementUtil.desiredVelocity = desiredVelocity;
+		movementUtil.surfaceVelocity = a_characterController->surfaceInfo.surfaceVelocity;
+		movementUtil.gain = 1.0F;
+		movementUtil.maxVelocityDelta = 500.0F;
+
+		RE::hkpCharacterMovementUtil::CalculateMovement(movementUtil, a_characterController->outVelocity);
+
+		a_characterController->outVelocity += a_characterController->surfaceInfo.surfaceVelocity;
+
+		float gravity = world->GetGravity().quad.m128_f32[0];
+
+		a_characterController->outVelocity += gravity * a_characterController->stepInfo.deltaTime;
+
+		a_characterController->SetWantedState();
+
+		RE::hkpCharacterStateType stateType = a_characterController->context.currentState;
+
+		if (stateType != RE::hkpCharacterStateType::kOnGround)
+		{
+			auto characterState = static_cast<RE::bhkCharacterState*>(a_characterController->context.stateManager->registeredState[stateType]);
+
+			characterState->SimulateStatePhysics(a_characterController);
+		}
 	}
 }

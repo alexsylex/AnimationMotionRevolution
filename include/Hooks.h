@@ -2,6 +2,7 @@
 
 #include "utils/Trampoline.h"
 
+#include "RE/B/bhkCharacterMoveInfo.h"
 #include "RE/B/BShkbAnimationGraph.h"
 #include "RE/H/hkbClipGenerator.h"
 #include "RE/H/hkbContext.h"
@@ -12,12 +13,12 @@ namespace hooks
 {
 	class hkbClipGenerator
 	{
-		static constexpr REL::RelocationID ActivateId = RELOCATION_ID(58602, 59252);
-		static constexpr REL::RelocationID DeactivateId = RELOCATION_ID(58604, 59254);
+		static constexpr REL::RelocationID ActivateId{ 58602, 59252 };
+		static constexpr REL::RelocationID DeactivateId{ 58604, 59254 };
 
 	public:
 
-		static inline REL::Relocation<std::uintptr_t> Activate{ ActivateId };
+		static inline REL::Relocation<std::uintptr_t> Activate{ ActivateId }; 
 		static inline REL::Relocation<std::uint32_t (*)(const RE::hkbClipGenerator*)> ComputeStartTime;
 		static std::uint32_t ComputeStartTime_Hook(const RE::hkbClipGenerator* a_this, const RE::hkbContext* a_context);
 
@@ -35,9 +36,9 @@ namespace hooks
 
 	class MotionDataContainer
 	{
-		static constexpr REL::RelocationID ProcessTranslationDataId = RELOCATION_ID(31812, 32582);
-		static constexpr REL::RelocationID ProcessRotationDataId = RELOCATION_ID(31813, 32583);
-		static constexpr REL::RelocationID InterpolateRotationId = RELOCATION_ID(69459, 70836);
+		static constexpr REL::RelocationID ProcessTranslationDataId{ 31812, 32582 };
+		static constexpr REL::RelocationID ProcessRotationDataId{ 31813, 32583 };
+		static constexpr REL::RelocationID InterpolateRotationId{ 69459, 70836 };
 
 	public:
 
@@ -60,9 +61,14 @@ namespace hooks
 
 			a_character->GetAnimationGraphManager(animGraph);
 
-			if (animGraph && animGraph->graphs[animGraph->activeGraph])
+			if (animGraph)
 			{
-				return &animGraph->graphs[animGraph->activeGraph]->characterInstance;
+				RE::BShkbAnimationGraphPtr activeGraph = animGraph->graphs[animGraph->GetRuntimeData().activeGraph];
+
+				if (activeGraph)
+				{
+					return &activeGraph->characterInstance;
+				}
 			}
 
 			return nullptr;
@@ -71,16 +77,56 @@ namespace hooks
 
 	class Character
 	{	
-		static constexpr REL::RelocationID ProcessMotionDataId = RELOCATION_ID(31949, 32703);
+		static constexpr REL::RelocationID ProcessMotionDataId{ 31949, 32703 };
 
 	public:
 
 		static inline REL::Relocation<std::uintptr_t> ProcessMotionData{ ProcessMotionDataId };
 	};
 
+	class bhkCharacterStateOnGround
+	{
+	public:
+
+		static inline REL::Relocation<std::uintptr_t> vTable{ RE::VTABLE_bhkCharacterStateOnGround[0] };
+
+		static inline REL::Relocation<void (*)(RE::bhkCharacterStateOnGround*, RE::bhkCharacterController*)> SimulateStatePhysics;
+	};
+
+	class bhkCharacterController
+	{
+		static constexpr REL::RelocationID UpdateStateAndMovementId{ 76436, 32703 };
+
+	public:
+
+		static inline REL::Relocation<RE::hkpCharacterStateType (*)(RE::bhkCharacterController*, RE::bhkCharacterMoveInfo*)> 
+			UpdateStateAndMovement{ UpdateStateAndMovementId };
+	};
+
+	class hkpCharacterContext
+	{
+	public:
+
+		static RE::hkpCharacterStateType GetCharacterState_Hook(RE::hkpCharacterContext* a_this);
+	};
+
+	void SimulateStatePhysics(RE::bhkCharacterStateOnGround* a_this, RE::bhkCharacterController* a_characterController);
+
 	static inline void Install()
 	{
-		// Bethesda used compiled Havok libraries, so neither registers 
+		bhkCharacterStateOnGround::SimulateStatePhysics = bhkCharacterStateOnGround::vTable.write_vfunc(8, SimulateStatePhysics);
+
+		// bhkCharacterController::UpdateStateAndMovement
+		{
+			static std::uintptr_t hookedAddress = bhkCharacterController::UpdateStateAndMovement.address() + 0x7D1;
+
+			utils::AllocExactSizeTrampoline<5>();
+			SKSE::GetTrampoline().write_call<5>(hookedAddress, &hkpCharacterContext::GetCharacterState_Hook);
+		}
+
+		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+		// My guess is that Bethesda used compiled Havok libraries, that is why neither registers 
 		// nor offsets changed between SE-AE for the hkbClipGenerator hooks
 
 		// hkbClipGenerator::Activate
@@ -133,10 +179,10 @@ namespace hooks
 
 		// Character::ProcessMotionData
 		{
-			static std::uintptr_t translation1HookedAddress = Character::ProcessMotionData.address() + (REL::Module::IsSE() ? 0x28D : 0x298);
-			static std::uintptr_t translation2HookedAddress = Character::ProcessMotionData.address() + (REL::Module::IsSE() ? 0x2A1 : 0x2AA);
-			static std::uintptr_t rotation1HookedAddress = Character::ProcessMotionData.address() + (REL::Module::IsSE() ? 0x355 : 0x35C);
-			static std::uintptr_t rotation2HookedAddress = Character::ProcessMotionData.address() + (REL::Module::IsSE() ? 0x368 : 0x36D);
+			static std::uintptr_t translation1HookedAddress = Character::ProcessMotionData.address() + (!REL::Module::IsAE() ? 0x28D : 0x298);
+			static std::uintptr_t translation2HookedAddress = Character::ProcessMotionData.address() + (!REL::Module::IsAE() ? 0x2A1 : 0x2AA);
+			static std::uintptr_t rotation1HookedAddress = Character::ProcessMotionData.address() + (!REL::Module::IsAE() ? 0x355 : 0x35C);
+			static std::uintptr_t rotation2HookedAddress = Character::ProcessMotionData.address() + (!REL::Module::IsAE() ? 0x368 : 0x36D);
 
 			struct Hook : Xbyak::CodeGenerator
 			{

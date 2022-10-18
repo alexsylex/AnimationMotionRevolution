@@ -9,11 +9,9 @@
 namespace utils
 {
 	template <std::size_t N>
-	static constexpr void AllocExactSizeTrampoline(Xbyak::CodeGenerator& a_hookCode)
+	static constexpr std::size_t GetTrampolineBaseSize()
 	{
 		static_assert(N == 5 || N == 6);
-
-		a_hookCode.ready();
 
 		// Reference: write_5branch() and write_6branch() of Trampoline.h
 		if constexpr (N == 5) {
@@ -30,10 +28,24 @@ namespace utils
 			};
 #pragma pack(pop)
 
-			SKSE::AllocTrampoline(a_hookCode.getSize() + sizeof(TrampolineAssembly));
-		} else if constexpr (N == 6) {
-			SKSE::AllocTrampoline(a_hookCode.getSize() + sizeof(std::uintptr_t));
+			return sizeof(TrampolineAssembly);
 		}
+		
+		return sizeof(std::uintptr_t);
+	}
+
+	template <std::size_t N>
+	static constexpr void AllocExactSizeTrampoline(Xbyak::CodeGenerator& a_hookCode)
+	{
+		a_hookCode.ready();
+
+		SKSE::AllocTrampoline(GetTrampolineBaseSize<N>() + a_hookCode.getSize());
+	}
+
+	template <std::size_t N>
+	static constexpr void AllocExactSizeTrampoline()
+	{
+		SKSE::AllocTrampoline(GetTrampolineBaseSize<N>());
 	}
 
 	template <std::size_t N>

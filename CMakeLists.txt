@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(
 	AnimationMotionRevolution
-	VERSION 1.5.1
+	VERSION 1.5.3
 	LANGUAGES CXX
 )
 
@@ -22,6 +22,16 @@ configure_file(
 )
 
 set(headers
+	include/RE/B/bhkCharacterController.h
+	include/RE/B/bhkCharacterMoveInfo.h
+	include/RE/B/bhkCharacterState.h
+	include/RE/B/bhkCharacterStateClimbing.h
+	include/RE/B/bhkCharacterStateFlying.h
+	include/RE/B/bhkCharacterStateInAir.h
+	include/RE/B/bhkCharacterStateJumping.h
+	include/RE/B/bhkCharacterStateOnGround.h
+	include/RE/B/bhkCharacterStateSwimming.h
+	include/RE/B/bhkWorld.h
 	include/RE/H/hkaAnimatedReferenceFrame.h
 	include/RE/H/hkaAnimation.h
 	include/RE/H/hkaAnimationBinding.h
@@ -36,8 +46,11 @@ set(headers
 	include/RE/H/hkbNode.h
 	include/RE/H/hkbStateMachine.h
 	include/RE/H/hkClass.h
+	include/RE/H/hkpCharacterMovementUtil.h
 	include/RE/H/hkQsTransform.h
+	include/RE/H/hkVector4.h
 	include/RE/M/MotionDataContainer.h
+	include/RE/RTTI.h
 	include/utils/Trampoline.h
 	include/utils/INISettingCollection.h
 	include/utils/half.h
@@ -87,7 +100,7 @@ target_link_libraries(
 	${PROJECT_NAME}
 	PRIVATE
 		CommonLibSSE::CommonLibSSE
-		spdlog::spdlog
+		spdlog::spdlog_header_only
 )
 
 if (MSVC)
@@ -109,12 +122,35 @@ target_precompile_headers(
 ## Automatic plugin deployment
 ########################################################################################################################
 
-set(DEPLOYMENT_DIR "C:/Program Files (x86)/Steam/steamapps/common/Skyrim Special Edition")
-set(DEPLOYMENT_DIR_AE "C:/Program Files (x86)/Steam/steamapps/common/Skyrim Anniversary Edition")
+set(SKYRIM_SE_DIR "C:/Program Files (x86)/Steam/steamapps/common/Skyrim Special Edition")
+set(SKYRIM_VR_DIR "C:/Program Files (x86)/Steam/steamapps/common/Skyrim VR")
+set(SKYRIM_AE_1_6_353_DIR "C:/Program Files (x86)/Steam/steamapps/common/Skyrim Anniversary Edition 1.6.353")
+set(SKYRIM_AE_1_6_640_DIR "C:/Program Files (x86)/Steam/steamapps/common/Skyrim Anniversary Edition 1.6.640")
 
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}>
-	"${DEPLOYMENT_DIR}/Data/SKSE/Plugins/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
-	COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}>
-	"${DEPLOYMENT_DIR_AE}/Data/SKSE/Plugins/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
-)
+if ("$ENV{RUNTIME_DISABLE_FLAGS}" STREQUAL "")
+	set(COPY_SE_AE YES)
+	set(COPY_VR YES)
+elseif ("$ENV{RUNTIME_DISABLE_FLAGS}" STREQUAL "-UENABLE_SKYRIM_VR")
+	set(COPY_SE_AE YES)
+	set(COPY_VR NO)
+elseif ("$ENV{RUNTIME_DISABLE_FLAGS}" STREQUAL "-UENABLE_SKYRIM_SE -UENABLE_SKYRIM_AE")
+	set(COPY_SE_AE NO)
+	set(COPY_VR YES)
+endif()
+
+if (COPY_SE_AE)
+	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}>
+		"${SKYRIM_SE_DIR}/Data/SKSE/Plugins/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
+		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}>
+		"${SKYRIM_AE_1_6_353_DIR}/Data/SKSE/Plugins/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
+		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}>
+		"${SKYRIM_AE_1_6_640_DIR}/Data/SKSE/Plugins/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
+	)
+endif()
+if (COPY_VR)
+	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}>
+		"${SKYRIM_VR_DIR}/Data/SKSE/Plugins/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
+	)
+endif()

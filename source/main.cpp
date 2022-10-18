@@ -3,11 +3,8 @@
 
 #include "utils/Logger.h"
 
-
 SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
 {
-	using namespace utils;
-
 	REL::Module::reset();
 
 	const SKSE::PluginDeclaration* plugin = SKSE::PluginDeclaration::GetSingleton();

@@ -13,3 +13,4 @@
 #define DLLEXPORT __declspec(dllexport)
 
 using namespace std::literals;
+using namespace REL::literals;
